@@ -17,7 +17,7 @@
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="REEMPLAZAR_TASKPANE_URL"/>
+    <SourceLocation DefaultValue="https://simulatuentor.github.io/seproinca-excel-mvp/"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -63,7 +63,7 @@
       </bt:Images>
 
       <bt:Urls>
-        <bt:Url id="taskpaneUrl" DefaultValue="REEMPLAZAR_TASKPANE_URL"/>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://simulatuentor.github.io/seproinca-excel-mvp/"/>
       </bt:Urls>
 
       <bt:ShortStrings>
