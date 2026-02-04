@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+
+  <Id>7b5f3a8a-8f7a-4f3d-9a4d-9b1111111111</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Seproinca</ProviderName>
+  <DefaultLocale>es-ES</DefaultLocale>
+  <DisplayName DefaultValue="Seproinca AI (MVP)"/>
+  <Description DefaultValue="MVP: panel de prueba Hola Seproinca."/>
+
+  <Hosts>
+    <Host Name="Workbook"/>
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="REEMPLAZAR_TASKPANE_URL"/>
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+                    xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Seproinca.Group">
+                <Label resid="Seproinca.GroupLabel"/>
+                <Control xsi:type="Button" id="Seproinca.ShowTaskpane">
+                  <Label resid="Seproinca.ButtonLabel"/>
+                  <Supertip>
+                    <Title resid="Seproinca.ButtonLabel"/>
+                    <Description resid="Seproinca.ButtonDesc"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                    <bt:Image size="80" resid="icon80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>Seproinca.Taskpane</TaskpaneId>
+                    <SourceLocation resid="taskpaneUrl"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <!-- Para el MVP, ponemos iconos genéricos de Microsoft para no crear archivos extras -->
+        <bt:Image id="icon16" DefaultValue="https://appsforoffice.microsoft.com/lib/1/hosted/images/office_icon.png"/>
+        <bt:Image id="icon32" DefaultValue="https://appsforoffice.microsoft.com/lib/1/hosted/images/office_icon.png"/>
+        <bt:Image id="icon80" DefaultValue="https://appsforoffice.microsoft.com/lib/1/hosted/images/office_icon.png"/>
+      </bt:Images>
+
+      <bt:Urls>
+        <bt:Url id="taskpaneUrl" DefaultValue="REEMPLAZAR_TASKPANE_URL"/>
+      </bt:Urls>
+
+      <bt:ShortStrings>
+        <bt:String id="Seproinca.GroupLabel" DefaultValue="Seproinca"/>
+        <bt:String id="Seproinca.ButtonLabel" DefaultValue="Abrir Seproinca MVP"/>
+      </bt:ShortStrings>
+
+      <bt:LongStrings>
+        <bt:String id="Seproinca.ButtonDesc" DefaultValue="Abre el panel de prueba Hola Seproinca."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
