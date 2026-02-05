@@ -312,7 +312,7 @@
       <input id="instruction" type="text" placeholder="Escribe algo más específico..." />
 
       <div style="height:10px"></div>
-      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
+      <button class="btn" id="btnExecute" type="button">Ejecutar (y pegar en celda activa)</button>
 
       <div class="hint" id="miniHint">Flujo: Selecciona celdas → Usar selección actual → Elegir acción → Ejecutar</div>
     </div>
@@ -321,6 +321,7 @@
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
       <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
+      <div class="hint">✅ Al ejecutar, el resultado también se pega en la celda activa (esquina superior izquierda del rango seleccionado).</div>
     </div>
 
     <!-- Log -->
@@ -365,8 +366,9 @@
   const btnModeLearn = $('#btnModeLearn');
   const btnModeProd  = $('#btnModeProd');
 
-  // ---- config (pon tu URL aquí o déjala vacía para que el token sea lo único visible)
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyb7m4sbUBeKiCTxTpr6Ff73UO86xKW4msYV-snS04vMF_TDXXR6JGg600ybxj1kPgvKw/exec";
+  // ---- config
+  // ✅ Pega aquí tu URL NUEVA (la que acabas de actualizar en Apps Script)
+  const DEFAULT_API_URL = "PEGAR_AQUI_TU_URL_NUEVA/exec";
 
   // ---- almacenamiento (Office Runtime Storage si existe; fallback localStorage)
   function storageAvailable_(){
@@ -438,9 +440,13 @@
     log('Modo: ' + currentMode);
   }
 
-  // ---- Excel selection
+  // ---- Excel helpers
+  function excelAvailable_(){
+    return (typeof Excel !== 'undefined' && Excel.run);
+  }
+
   async function readSelectionExcel_(){
-    if (typeof Excel === 'undefined' || !Excel.run){
+    if (!excelAvailable_()){
       throw new Error('Excel API no disponible en este host.');
     }
 
@@ -459,6 +465,26 @@
         : '';
 
       return { addr, rows, cols, text };
+    });
+  }
+
+  async function writeResultToActiveCell_(text){
+    if (!excelAvailable_()){
+      throw new Error('Excel API no disponible para escribir en celdas.');
+    }
+    const out = String(text || '').trim();
+    if (!out) throw new Error('Resultado vacío: no hay nada que pegar.');
+
+    return await Excel.run(async (ctx) => {
+      // En Office.js “celda activa” se maneja como el rango seleccionado;
+      // usaremos la esquina superior izquierda como destino seguro.
+      const sel = ctx.workbook.getSelectedRange();
+      const tl = sel.getCell(0,0);
+      tl.values = [[ out ]];
+      tl.format.autofitColumns();
+      tl.format.autofitRows();
+      await ctx.sync();
+      return true;
     });
   }
 
@@ -511,7 +537,7 @@
       const token = getToken_();
       await storageSet_('seproincaia.token.last', token);
 
-      // 2) selección
+      // 2) selección (texto)
       const selectionText = (elSelText.value || '').trim();
       if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
 
@@ -529,7 +555,7 @@
       const bodyObj = {
         action,
         token,
-        email: "",      // MVP: no pedimos email al usuario (backend puede ignorarlo o inferirlo)
+        email: "",      // MVP: email opcional (backend resuelve por token)
         payload
       };
 
@@ -548,15 +574,27 @@
       else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
 
       if (data && data.ok){
+        const resultText = String(data.result || '').trim();
+
         const extra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
-        showOK((data.result || '') + extra);
+        showOK(resultText + extra);
         log('OK: respuesta recibida');
 
         // Estado
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(true, uses);
+
+        // ✅ NUEVO: pegar automáticamente en celda activa
+        try{
+          await writeResultToActiveCell_(resultText);
+          log('Pegado OK en celda activa (top-left del rango seleccionado).');
+        }catch(pasteErr){
+          // No rompe el flujo si falla el pegado; solo lo reporta
+          log('Aviso: no se pudo pegar en celda activa: ' + (pasteErr.message || pasteErr));
+        }
+
       }else{
         const msg = (data && (data.error || data.detail))
           ? (data.error + (data.detail ? ('\n' + data.detail) : ''))
@@ -640,7 +678,7 @@
       }, 350);
     });
 
-    showOK('Listo.\n\n1) Pega tu token\n2) Selecciona celdas → “Usar selección actual”\n3) Elige acción\n4) Ejecutar');
+    showOK('Listo.\n\n1) Pega tu token\n2) Selecciona celdas → “Usar selección actual”\n3) Elige acción\n4) Ejecutar (se pega en celda activa)');
     log('Office.onReady OK (host=' + host + ')');
   });
 
