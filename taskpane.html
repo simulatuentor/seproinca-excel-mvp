@@ -371,6 +371,10 @@
   // ✅ URL definitiva (cámbiala aquí si es otra)
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyb7m4sbUBeKiCTxTpr6Ff73UO86xKW4msYV-snS04vMF_TDXXR6JGg600ybxj1kPgvKw/exec";
 
+  // ✅ timeouts (sin romper lo que ya funciona)
+  const API_TIMEOUT_MS_PING = 15000;
+  const API_TIMEOUT_MS_POST = 35000;
+
   function storageAvailable_(){
     try{
       return (typeof Office !== 'undefined'
@@ -512,28 +516,114 @@
     return t;
   }
 
-  async function ping_(){
-    try{
-      setBusy(true);
-      const url = getApiUrl_();
-      log('Ping GET');
-      const r = await fetch(url, { method:'GET' });
-      const txt = await r.text();
-      showOK(txt);
-      log('Ping OK');
-    }catch(e){
-      showERR(e.message || String(e));
-      log('Ping ERROR: ' + (e.message || e));
-    }finally{
-      setBusy(false);
-    }
-  }
-
   function setState_(active, uses){
     const ok = !!active;
     elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
     const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
     elStateChip.innerHTML = `<span class="dot ${ok ? 'green' : 'red'}"></span> Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
+  }
+
+  // ==========================================================
+  // ✅ HTTP helpers (JSON-only + tolerante con respuestas raras)
+  // ==========================================================
+
+  function _makeReqId_(){
+    const a = Date.now().toString(36).slice(-6);
+    const b = Math.random().toString(36).slice(2, 6);
+    return `x${a}${b}`;
+  }
+
+  function _tryParseJson_(txt){
+    const t = String(txt || '').trim();
+    if (!t) return null;
+    try { return JSON.parse(t); } catch(e){ return null; }
+  }
+
+  async function _fetchJson_(url, opts, timeoutMs){
+    const to = Math.max(2000, Number(timeoutMs || 0) || 15000);
+    const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const tmr = setTimeout(() => { try{ controller && controller.abort(); }catch(e){} }, to);
+
+    try{
+      const res = await fetch(url, Object.assign({}, opts || {}, controller ? { signal: controller.signal } : {}));
+      const raw = await res.text();
+
+      // ✅ Siempre intentamos JSON, aunque content-type venga raro.
+      const parsed = _tryParseJson_(raw);
+
+      if (parsed) return { ok:true, status: res.status, data: parsed, raw };
+      return { ok:false, status: res.status, data: null, raw };
+
+    }catch(e){
+      const msg = (e && e.name === 'AbortError') ? `timeout_${to}ms` : (e && e.message ? e.message : String(e));
+      return { ok:false, status: 0, data: null, raw: '', error: msg };
+    }finally{
+      clearTimeout(tmr);
+    }
+  }
+
+  function _formatBackendError_(data, fallbackRaw){
+    // Contrato backend: {ok:false, error, detail?, http?}
+    if (data && typeof data === 'object'){
+      const code = data.error || 'error';
+      const det  = data.detail ? String(data.detail) : '';
+      const http = (typeof data.http !== 'undefined') ? ` (http=${data.http})` : '';
+      return String(code) + http + (det ? ('\n' + det) : '');
+    }
+    const raw = String(fallbackRaw || '').trim();
+    if (raw) return 'Respuesta no-JSON\n' + raw.slice(0, 1200);
+    return 'Error desconocido';
+  }
+
+  async function ping_(){
+    try{
+      setBusy(true);
+      const base = getApiUrl_();
+
+      // ✅ cache-bust para que no te muestre respuestas viejas
+      const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+      log('Ping GET (JSON-only esperado)');
+      const out = await _fetchJson_(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }, API_TIMEOUT_MS_PING);
+
+      if (!out.ok && out.error){
+        showERR('Ping ERROR: ' + out.error);
+        log('Ping ERROR: ' + out.error);
+        setState_(false);
+        return;
+      }
+
+      if (out.ok && out.data){
+        // ✅ backend doGet devuelve {ok:true, service, version, now}
+        const d = out.data;
+        if (d.ok){
+          const txt = [
+            `service: ${d.service || '—'}`,
+            `version: ${d.version || '—'}`,
+            `now: ${d.now || '—'}`
+          ].join('\n');
+          showOK(txt);
+          log('Ping OK (version=' + (d.version || '—') + ')');
+          // Ping no valida token, así que no tocamos estado de token.
+        }else{
+          showERR(_formatBackendError_(d, out.raw));
+          log('Ping ERROR (backend): ' + _formatBackendError_(d, out.raw));
+        }
+      }else{
+        showERR(_formatBackendError_(null, out.raw));
+        log('Ping ERROR: respuesta no JSON');
+      }
+
+    }catch(e){
+      showERR(e.message || String(e));
+      log('Ping ERROR: ' + (e.message || e));
+      setState_(false);
+    }finally{
+      setBusy(false);
+    }
   }
 
   async function execute_(){
@@ -551,26 +641,39 @@
 
       const payload = { selectionText, instruction, mode: currentMode };
 
+      // ✅ request_id: evita doble descuento si Office/fetch reintenta
+      const request_id = _makeReqId_();
+
       const bodyObj = {
         action,
         token,
         email: "",
-        payload
+        payload,
+        request_id
       };
 
       const url = getApiUrl_();
-      log(`POST → ${action} (modo=${currentMode})`);
+      log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
 
-      const res = await fetch(url, {
+      // ✅ Importante para evitar preflight: Content-Type text/plain
+      const out = await _fetchJson_(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(bodyObj)
-      });
+      }, API_TIMEOUT_MS_POST);
 
-      const ct = (res.headers.get('content-type') || '').toLowerCase();
-      let data;
-      if (ct.includes('application/json')) data = await res.json();
-      else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
+      if (!out.ok && out.error){
+        const msg = 'ERROR red: ' + out.error;
+        showERR(msg);
+        log(msg);
+        setState_(false);
+        return;
+      }
+
+      const data = out.data;
 
       if (data && data.ok){
         // ✅ UI puede mostrar uses_remaining, pero NO se pega en celda
@@ -587,13 +690,16 @@
 
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(true, uses);
+
       }else{
-        const msg = (data && (data.error || data.detail))
-          ? (data.error + (data.detail ? ('\n' + data.detail) : ''))
-          : 'Error desconocido';
+        // ✅ error JSON claro (o fallback)
+        const msg = _formatBackendError_(data, out.raw);
         showERR(msg);
         log('ERROR backend: ' + msg);
-        setState_(false);
+
+        // Si backend manda uses_remaining en error (opcional), lo reflejamos
+        const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_(false, usesErr);
       }
 
     }catch(e){
