@@ -25,11 +25,12 @@
     button:disabled{ opacity:.6; cursor:not-allowed; }
     .log{
       background:#f6f8fa; border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size:12px; white-space:pre-wrap; max-height:220px; overflow:auto;
+      font-size:12px; white-space:pre-wrap; max-height:240px; overflow:auto;
     }
     .ok{ color:#065f46; font-weight:700; }
     .bad{ color:#991b1b; font-weight:700; }
     .muted{ color:#6b7280; font-size:12px; }
+    .chip{ display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; }
   </style>
 </head>
 
@@ -40,7 +41,10 @@
   <div class="card">
     <div class="row" style="align-items:center; justify-content:space-between;">
       <b>Configuración</b>
-      <button class="secondary" id="btnPing">Ping (GET)</button>
+      <div class="row">
+        <span class="chip" id="hostChip">host: ?</span>
+        <button class="secondary" id="btnPing">Ping (GET)</button>
+      </div>
     </div>
 
     <label>Web App URL (termina en /exec)</label>
@@ -86,6 +90,7 @@
 (function(){
   const $ = (s) => document.querySelector(s);
   const elStatus = $('#status');
+  const elHostChip = $('#hostChip');
   const elLog = $('#log');
   const elResult = $('#result');
 
@@ -124,27 +129,27 @@
     return { apiUrl, email, token };
   }
 
-  // ✅ Lectura robusta: Matrix → texto (evita “enumeración no admitida”)
-  function readSelectionAsText(){
-    return new Promise((resolve, reject) => {
-      try{
-        Office.context.document.getSelectedDataAsync(
-          Office.CoercionType.Matrix,
-          { valueFormat: "Unformatted" },
-          (asyncResult) => {
-            if (asyncResult.status !== Office.AsyncResultStatus.Succeeded) {
-              return reject(new Error(asyncResult.error && asyncResult.error.message ? asyncResult.error.message : 'No se pudo leer la selección'));
-            }
-            const m = asyncResult.value;
-            if (!m || !Array.isArray(m) || !m.length) return resolve('');
-            // Convertimos matriz a texto tipo TSV (filas con tab y salto de línea)
-            const text = m.map(row => (row || []).map(v => String(v ?? '')).join('\t')).join('\n').trim();
-            resolve(text);
-          }
-        );
-      } catch (e) {
-        reject(e);
-      }
+  // ✅ Lectura REAL para Excel: Excel.run → SelectedRange.values
+  async function readSelectionAsTextExcel(){
+    if (typeof Excel === 'undefined' || !Excel.run) {
+      throw new Error('Excel API no disponible en este host. (Excel.run no existe)');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const range = ctx.workbook.getSelectedRange();
+      range.load(['values', 'address']);
+      await ctx.sync();
+
+      const values = range.values;
+      if (!values || !Array.isArray(values) || !values.length) return '';
+
+      // Convertimos matriz a texto tipo TSV
+      const text = values
+        .map(row => (row || []).map(v => String(v ?? '')).join('\t'))
+        .join('\n')
+        .trim();
+
+      return text;
     });
   }
 
@@ -162,7 +167,7 @@
     }
   }
 
-  // ✅ POST sin preflight: mandamos JSON como text/plain
+  // ✅ POST sin preflight: JSON como text/plain
   async function callBackend(action){
     setBusy(true);
     try{
@@ -170,27 +175,18 @@
 
       let text = (elManual.value || '').trim();
       if (!text){
-        log('Leyendo selección (Matrix)...');
-        text = await readSelectionAsText();
+        log('Leyendo selección con Excel.run...');
+        text = await readSelectionAsTextExcel();
       }
-      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas.');
+      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas con contenido.');
 
-      const bodyObj = {
-        action,
-        token,
-        email,
-        payload: { selectionText: text }
-      };
-
+      const bodyObj = { action, token, email, payload: { selectionText: text } };
       const bodyText = JSON.stringify(bodyObj);
 
       log(`POST → ${action} (text/plain para evitar CORS)`);
       const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          // 👇 clave para evitar preflight
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: bodyText
       });
 
@@ -206,14 +202,15 @@
         showResultOk((data.result || '') + extra);
         log('OK: respuesta recibida');
       } else {
-        const msg = (data && (data.error || data.detail)) ? (data.error + (data.detail ? ('\n' + data.detail) : '')) : 'Error desconocido';
+        const msg = (data && (data.error || data.detail))
+          ? (data.error + (data.detail ? ('\n' + data.detail) : ''))
+          : 'Error desconocido';
         showResultErr(msg);
         log('ERROR backend: ' + msg);
       }
-
     } catch (e) {
       showResultErr(e.message || String(e));
-      log('ERROR fetch: ' + (e.message || e));
+      log('ERROR: ' + (e.message || e));
     } finally {
       setBusy(false);
     }
@@ -229,9 +226,12 @@
   async function leerSeleccion(){
     try{
       setBusy(true);
-      const t = await readSelectionAsText();
+      const t = await readSelectionAsTextExcel();
       elManual.value = t;
       log('Selección copiada al cuadro de texto.');
+      if (!t) {
+        showResultErr('La selección está vacía. Selecciona celdas con contenido.');
+      }
     } catch(e){
       showResultErr(e.message || String(e));
       log('ERROR leer selección: ' + (e.message || e));
@@ -240,9 +240,12 @@
     }
   }
 
-  Office.onReady(() => {
+  Office.onReady((info) => {
+    const host = info && info.host ? info.host : 'unknown';
+    elHostChip.textContent = 'host: ' + host;
+
     elStatus.textContent = 'Office listo ✅';
-    log('Office.onReady OK');
+    log('Office.onReady OK (host=' + host + ')');
 
     $('#btnPing').addEventListener('click', pingGet);
     $('#btnLeerSel').addEventListener('click', leerSeleccion);
