@@ -36,7 +36,6 @@
       color: var(--ink);
     }
 
-    /* --- Header tipo producto --- */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -69,7 +68,6 @@
       letter-spacing:.2px;
     }
 
-    /* --- Contenedor --- */
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
@@ -142,9 +140,6 @@
     .dot.green{ background: #22c55e; }
     .dot.red{ background: #ef4444; }
 
-    .muted{ color: var(--muted); font-size: 12px; }
-    .small{ font-size: 12px; color: var(--muted); }
-
     .btn{
       width:100%;
       border:0;
@@ -171,12 +166,6 @@
       width:100%;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
-
-    .grid2{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
 
     .divider{
       height:1px;
@@ -259,7 +248,6 @@
   </div>
 
   <div class="wrap">
-    <!-- Configuración mínima -->
     <div class="card">
       <div class="modeRow">
         <div style="font-weight:900;">Modo</div>
@@ -271,14 +259,11 @@
 
       <div class="label">Token</div>
       <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
-
       <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
 
-      <!-- URL del backend oculta pero editable (por si tú lo necesitas) -->
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
-    <!-- Selección -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Rango seleccionado</div>
 
@@ -288,7 +273,6 @@
       </div>
 
       <div class="divider"></div>
-
       <button class="btnGhost" id="btnUseSelection" type="button">Usar selección actual</button>
 
       <div class="label" style="margin-top:10px;">Selección (texto)</div>
@@ -296,7 +280,6 @@
       <div class="hint">Puedes editar el texto antes de ejecutar si lo deseas.</div>
     </div>
 
-    <!-- Acción + instrucción -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">¿Qué quieres hacer?</div>
 
@@ -313,18 +296,15 @@
 
       <div style="height:10px"></div>
       <button class="btn" id="btnExecute" type="button">Ejecutar (y pegar en celda activa)</button>
-
       <div class="hint" id="miniHint">Flujo: Selecciona celdas → Usar selección actual → Elegir acción → Ejecutar</div>
     </div>
 
-    <!-- Resultado -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
       <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
-      <div class="hint">✅ Al ejecutar, el resultado también se pega en la celda activa (esquina superior izquierda del rango seleccionado).</div>
+      <div class="hint">✅ Al ejecutar, el resultado se pega en la celda activa (top-left del rango seleccionado).</div>
     </div>
 
-    <!-- Log -->
     <div class="card">
       <div class="row" style="justify-content:space-between;">
         <div style="font-weight:900;">Log</div>
@@ -339,7 +319,6 @@
 (function(){
   const $ = (s) => document.querySelector(s);
 
-  // ---- elementos
   const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
 
@@ -366,11 +345,9 @@
   const btnModeLearn = $('#btnModeLearn');
   const btnModeProd  = $('#btnModeProd');
 
-  // ---- config
-  // ✅ Pega aquí tu URL NUEVA (la que acabas de actualizar en Apps Script)
-  const DEFAULT_API_URL = "PEGAR_AQUI_TU_URL_NUEVA/exec";
+  // ✅ REEMPLAZA POR TU URL REAL (DEBE TERMINAR EN /exec)
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyb7m4sbUBeKiCTxTpr6Ff73UO86xKW4msYV-snS04vMF_TDXXR6JGg600ybxj1kPgvKw/exec";
 
-  // ---- almacenamiento (Office Runtime Storage si existe; fallback localStorage)
   function storageAvailable_(){
     try{
       return (typeof Office !== 'undefined'
@@ -431,7 +408,6 @@
     elAction.disabled = !!isBusy;
   }
 
-  // ---- Modo
   let currentMode = 'Aprendizaje';
   function setMode(mode){
     currentMode = mode === 'Producción' ? 'Producción' : 'Aprendizaje';
@@ -440,7 +416,6 @@
     log('Modo: ' + currentMode);
   }
 
-  // ---- Excel helpers
   function excelAvailable_(){
     return (typeof Excel !== 'undefined' && Excel.run);
   }
@@ -449,7 +424,6 @@
     if (!excelAvailable_()){
       throw new Error('Excel API no disponible en este host.');
     }
-
     return await Excel.run(async (ctx) => {
       const range = ctx.workbook.getSelectedRange();
       range.load(['values','address','rowCount','columnCount']);
@@ -476,8 +450,6 @@
     if (!out) throw new Error('Resultado vacío: no hay nada que pegar.');
 
     return await Excel.run(async (ctx) => {
-      // En Office.js “celda activa” se maneja como el rango seleccionado;
-      // usaremos la esquina superior izquierda como destino seguro.
       const sel = ctx.workbook.getSelectedRange();
       const tl = sel.getCell(0,0);
       tl.values = [[ out ]];
@@ -493,16 +465,30 @@
     elRangeCells.textContent = (rows && cols) ? `${rows} × ${cols} (${rows*cols} celdas)` : '—';
   }
 
-  // ---- Backend
   function getApiUrl_(){
     const v = (elApiUrl.value || '').trim();
-    return v || DEFAULT_API_URL;
+    const url = v || DEFAULT_API_URL;
+
+    if (!url || url.includes('PEGAR_AQUI') || url.includes('REEMPLAZA_ESTO')){
+      throw new Error('API URL inválida. Edita DEFAULT_API_URL y pega tu URL real que termina en /exec.');
+    }
+    if (!/\/exec(\?|$)/.test(url)){
+      throw new Error('API URL no parece /exec. Debe ser la URL “Web app” que termina en /exec.');
+    }
+    return url;
   }
 
   function getToken_(){
     const t = (elToken.value || '').trim();
     if (!t) throw new Error('Pega tu token para continuar.');
     return t;
+  }
+
+  function setState_(active, uses){
+    const ok = !!active;
+    elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
+    const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
+    elStateChip.innerHTML = `<span class="dot ${ok ? 'green' : 'red'}"></span> Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
   }
 
   async function ping_(){
@@ -522,26 +508,16 @@
     }
   }
 
-  function setState_(active, uses){
-    const ok = !!active;
-    elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
-    const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
-    elStateChip.innerHTML = `<span class="dot ${ok ? 'green' : 'red'}"></span> Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
-  }
-
   async function execute_(){
     try{
       setBusy(true);
 
-      // 1) token + recordar
       const token = getToken_();
       await storageSet_('seproincaia.token.last', token);
 
-      // 2) selección (texto)
       const selectionText = (elSelText.value || '').trim();
       if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
 
-      // 3) acción + instrucción + modo
       const action = elAction.value || 'Analizar';
       const instruction = (elInstr.value || '').trim();
 
@@ -551,16 +527,16 @@
         mode: currentMode
       };
 
-      // 4) POST sin preflight: text/plain
       const bodyObj = {
         action,
         token,
-        email: "",      // MVP: email opcional (backend resuelve por token)
+        email: "",
         payload
       };
 
       const url = getApiUrl_();
       log(`POST → ${action} (modo=${currentMode})`);
+      log(`URL usada: ${url}`);
 
       const res = await fetch(url, {
         method: 'POST',
@@ -571,7 +547,7 @@
       const ct = (res.headers.get('content-type') || '').toLowerCase();
       let data;
       if (ct.includes('application/json')) data = await res.json();
-      else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
+      else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text(), http: res.status };
 
       if (data && data.ok){
         const resultText = String(data.result || '').trim();
@@ -582,26 +558,29 @@
         showOK(resultText + extra);
         log('OK: respuesta recibida');
 
-        // Estado
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(true, uses);
 
-        // ✅ NUEVO: pegar automáticamente en celda activa
         try{
           await writeResultToActiveCell_(resultText);
           log('Pegado OK en celda activa (top-left del rango seleccionado).');
         }catch(pasteErr){
-          // No rompe el flujo si falla el pegado; solo lo reporta
           log('Aviso: no se pudo pegar en celda activa: ' + (pasteErr.message || pasteErr));
         }
 
       }else{
+        const http = (data && data.http) ? `\nHTTP: ${data.http}` : '';
         const msg = (data && (data.error || data.detail))
-          ? (data.error + (data.detail ? ('\n' + data.detail) : ''))
-          : 'Error desconocido';
+          ? (data.error + (data.detail ? ('\n' + data.detail) : '') + http)
+          : ('Error desconocido' + http);
         showERR(msg);
         log('ERROR backend: ' + msg);
         setState_(false);
+
+        // pista específica para tu caso
+        if (String(data.detail || '').includes('405 Not Allowed')){
+          log('Pista: 405 casi siempre = URL incorrecta/no /exec o deployment no permite POST.');
+        }
       }
 
     }catch(e){
@@ -637,16 +616,13 @@
     }
   }
 
-  // ---- init
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
     elHostChip.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
-    // URL oculta (pero seteada)
     elApiUrl.value = DEFAULT_API_URL;
 
-    // cargar token recordado
     const last = await storageGet_('seproincaia.token.last');
     if (last) {
       elToken.value = last;
@@ -655,11 +631,9 @@
       log('Sin token guardado todavía.');
     }
 
-    // modo default
     setMode('Aprendizaje');
     setState_(false);
 
-    // listeners
     btnUseSelection.addEventListener('click', useSelection_);
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
@@ -667,7 +641,6 @@
     btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
     btnModeProd.addEventListener('click', () => setMode('Producción'));
 
-    // guardar token al escribir (debounce simple)
     let tmr = null;
     elToken.addEventListener('input', () => {
       if (tmr) clearTimeout(tmr);
