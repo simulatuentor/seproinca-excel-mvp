@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Seproinca MVP</title>
 
-  <!-- Office.js (requerido en taskpane) -->
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
   <style>
@@ -67,7 +66,7 @@
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      Tip: Selecciona celdas en Excel → “Leer selección” → luego un botón.
+      Tip: Selecciona celdas → “Leer selección” → luego un botón. (Si no, escribe en el cuadro.)
     </div>
   </div>
 
@@ -95,14 +94,16 @@
   const elToken  = $('#token');
   const elManual = $('#manualText');
 
-  // === AJUSTA AQUÍ si quieres valores por defecto ===
-  // elApiUrl.value = "PEGA_AQUI_TU_URL_/exec";
-  // elEmail.value  = "correopruebaluisana@gmail.com";
-  // elToken.value  = "sepro-manoo-NW5N2G";
-
   function log(msg){
     const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
     elLog.textContent = line + (elLog.textContent || '');
+  }
+
+  function escapeHtml(s){
+    return String(s || '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
   }
 
   function showResultOk(text){
@@ -111,13 +112,6 @@
 
   function showResultErr(text){
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
-  }
-
-  function escapeHtml(s){
-    return String(s || '')
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;');
   }
 
   function getConfig(){
@@ -130,18 +124,22 @@
     return { apiUrl, email, token };
   }
 
-  function readSelectionText(){
+  // ✅ Lectura robusta: Matrix → texto (evita “enumeración no admitida”)
+  function readSelectionAsText(){
     return new Promise((resolve, reject) => {
       try{
         Office.context.document.getSelectedDataAsync(
-          Office.CoercionType.Text,
+          Office.CoercionType.Matrix,
           { valueFormat: "Unformatted" },
           (asyncResult) => {
-            if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-              resolve(String(asyncResult.value || '').trim());
-            } else {
-              reject(new Error(asyncResult.error && asyncResult.error.message ? asyncResult.error.message : 'No se pudo leer la selección'));
+            if (asyncResult.status !== Office.AsyncResultStatus.Succeeded) {
+              return reject(new Error(asyncResult.error && asyncResult.error.message ? asyncResult.error.message : 'No se pudo leer la selección'));
             }
+            const m = asyncResult.value;
+            if (!m || !Array.isArray(m) || !m.length) return resolve('');
+            // Convertimos matriz a texto tipo TSV (filas con tab y salto de línea)
+            const text = m.map(row => (row || []).map(v => String(v ?? '')).join('\t')).join('\n').trim();
+            resolve(text);
           }
         );
       } catch (e) {
@@ -164,44 +162,42 @@
     }
   }
 
+  // ✅ POST sin preflight: mandamos JSON como text/plain
   async function callBackend(action){
-    // Deshabilitar botones mientras llama
     setBusy(true);
-
     try{
       const { apiUrl, email, token } = getConfig();
 
-      // texto a enviar: manual si existe, si no, selección de Excel
       let text = (elManual.value || '').trim();
       if (!text){
-        log('Leyendo selección de Excel...');
-        text = await readSelectionText();
+        log('Leyendo selección (Matrix)...');
+        text = await readSelectionAsText();
       }
-      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas en Excel.');
+      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas.');
 
-      const body = {
+      const bodyObj = {
         action,
         token,
         email,
         payload: { selectionText: text }
       };
 
-      log(`POST → ${action}`);
+      const bodyText = JSON.stringify(bodyObj);
+
+      log(`POST → ${action} (text/plain para evitar CORS)`);
       const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        headers: {
+          // 👇 clave para evitar preflight
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: bodyText
       });
 
-      // Si no es JSON, lo mostramos igual
-      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
       let data;
-      if (contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const t = await res.text();
-        data = { ok: false, error: 'Respuesta no-JSON', detail: t };
-      }
+      if (ct.includes('application/json')) data = await res.json();
+      else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
 
       if (data && data.ok) {
         const extra = (typeof data.uses_remaining !== 'undefined')
@@ -216,10 +212,8 @@
       }
 
     } catch (e) {
-      // Aquí caerá también si hay CORS / Failed to fetch
       showResultErr(e.message || String(e));
       log('ERROR fetch: ' + (e.message || e));
-      log('Si dice "Failed to fetch" o CORS, hay que ajustar el backend para CORS/OPTIONS o usar proxy.');
     } finally {
       setBusy(false);
     }
@@ -235,7 +229,7 @@
   async function leerSeleccion(){
     try{
       setBusy(true);
-      const t = await readSelectionText();
+      const t = await readSelectionAsText();
       elManual.value = t;
       log('Selección copiada al cuadro de texto.');
     } catch(e){
@@ -246,7 +240,6 @@
     }
   }
 
-  // Office init
   Office.onReady(() => {
     elStatus.textContent = 'Office listo ✅';
     log('Office.onReady OK');
@@ -259,8 +252,7 @@
     $('#btnRevisar').addEventListener('click', () => callBackend('Revisar'));
     $('#btnDisenar').addEventListener('click', () => callBackend('Diseñar'));
 
-    // Mensaje inicial
-    showResultOk('Listo. Configura URL/email/token y prueba.\n\n1) Selecciona celdas\n2) Leer selección\n3) Analizar');
+    showResultOk('Listo.\n\n1) Pega URL/email/token\n2) Escribe texto o selecciona celdas\n3) Analizar');
   });
 
 })();
