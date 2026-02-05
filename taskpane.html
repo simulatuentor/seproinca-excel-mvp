@@ -142,9 +142,6 @@
     .dot.green{ background: #22c55e; }
     .dot.red{ background: #ef4444; }
 
-    .muted{ color: var(--muted); font-size: 12px; }
-    .small{ font-size: 12px; color: var(--muted); }
-
     .btn{
       width:100%;
       border:0;
@@ -171,12 +168,6 @@
       width:100%;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
-
-    .grid2{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
 
     .divider{
       height:1px;
@@ -282,10 +273,9 @@
 
       <div class="label">Token</div>
       <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
-
       <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
 
-      <!-- URL del backend oculta pero editable (por si tú lo necesitas) -->
+      <!-- URL del backend oculta pero editable (solo para ti) -->
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
@@ -325,7 +315,9 @@
       <div style="height:10px"></div>
       <button class="btn" id="btnExecute" type="button">Ejecutar</button>
 
-      <div class="hint" id="miniHint">Flujo: Selecciona celdas → Usar selección actual → Elegir acción → Ejecutar</div>
+      <div class="hint" id="miniHint">
+        Flujo: Selecciona celdas → Usar selección actual → (muévete a la celda destino) → Ejecutar
+      </div>
     </div>
 
     <!-- Resultado -->
@@ -385,9 +377,8 @@
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
 
-  // ---- config (pon tu URL aquí)
-  // ⚠️ IMPORTANTE: pega aquí tu URL DEFINITIVA
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyb7m4sbUBeKiCTxTpr6Ff73UO86xKW4msYV-snS04vMF_TDXXR6JGg600ybxj1kPgvKw/exec";
+  // ---- config (pega aquí tu URL DEFINITIVA)
+  const DEFAULT_API_URL = "PEGA_AQUI_TU_URL_DEFINITIVA";
 
   // ---- almacenamiento (Office Runtime Storage si existe; fallback localStorage)
   function storageAvailable_(){
@@ -459,7 +450,7 @@
     log('Modo: ' + currentMode);
   }
 
-  // ---- Log colapsable (SIEMPRE oculto al iniciar)
+  // ---- Log colapsable (siempre oculto al iniciar)
   function setLogVisible_(visible){
     const v = !!visible;
     elLogWrap.classList.toggle('logHidden', !v);
@@ -493,6 +484,31 @@
   function updateRangeInfo_(addr, rows, cols){
     elRangeAddr.textContent = addr || '—';
     elRangeCells.textContent = (rows && cols) ? `${rows} × ${cols} (${rows*cols} celdas)` : '—';
+  }
+
+  // ---- Escribir resultado en celda activa (lo que ya tenías logrado)
+  async function writeResultToActiveCell_(text){
+    try{
+      if (typeof Excel === 'undefined' || !Excel.run) return;
+
+      const out = String(text || '').trim();
+      if (!out) return;
+
+      await Excel.run(async (ctx) => {
+        const cell = ctx.workbook.getActiveCell();
+        cell.values = [[out]];
+        cell.format.wrapText = true;
+        // (Opcional) autofit para que se vea mejor
+        cell.format.autofitRows();
+        cell.format.autofitColumns();
+        await ctx.sync();
+      });
+
+      log('Resultado pegado en celda activa.');
+    }catch(e){
+      // No rompemos el flujo si falla pegar en Excel
+      log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
+    }
   }
 
   // ---- Backend
@@ -579,9 +595,16 @@
         const extra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
-        showOK((data.result || '') + extra);
+
+        const finalText = (data.result || '') + extra;
+
+        showOK(finalText);
         log('OK: respuesta recibida');
 
+        // ✅ Pegar en celda activa (restaurado)
+        await writeResultToActiveCell_(finalText);
+
+        // Estado
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(true, uses);
       }else{
@@ -661,7 +684,7 @@
 
     btnToggleLog.addEventListener('click', () => {
       const isHidden = elLogWrap.classList.contains('logHidden');
-      setLogVisible_(isHidden); // si está oculto -> mostrar
+      setLogVisible_(isHidden);
     });
 
     // guardar token al escribir (debounce simple)
@@ -675,7 +698,7 @@
       }, 350);
     });
 
-    showOK('Listo.\n\n1) Pega tu token\n2) Selecciona celdas → “Usar selección actual”\n3) Elige acción\n4) Ejecutar');
+    showOK('Listo.\n\n1) Pega tu token\n2) Selecciona celdas → “Usar selección actual”\n3) Muévete a la celda destino\n4) Ejecutar');
     log('Office.onReady OK (host=' + host + ')');
   });
 
