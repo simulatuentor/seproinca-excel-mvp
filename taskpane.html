@@ -36,7 +36,6 @@
       color: var(--ink);
     }
 
-    /* --- Header tipo producto --- */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -69,7 +68,6 @@
       letter-spacing:.2px;
     }
 
-    /* --- Contenedor --- */
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
@@ -234,7 +232,6 @@
       margin-top: 6px;
     }
 
-    /* --- Log colapsable --- */
     .collapseHeader{
       display:flex;
       justify-content:space-between;
@@ -261,7 +258,6 @@
   </div>
 
   <div class="wrap">
-    <!-- Configuración mínima -->
     <div class="card">
       <div class="modeRow">
         <div style="font-weight:900;">Modo</div>
@@ -275,11 +271,10 @@
       <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
       <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
 
-      <!-- URL del backend oculta pero editable (solo para ti) -->
+      <!-- URL del backend oculta (solo para ti) -->
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
-    <!-- Selección -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Rango seleccionado</div>
 
@@ -297,7 +292,6 @@
       <div class="hint">Puedes editar el texto antes de ejecutar si lo deseas.</div>
     </div>
 
-    <!-- Acción + instrucción -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">¿Qué quieres hacer?</div>
 
@@ -320,13 +314,11 @@
       </div>
     </div>
 
-    <!-- Resultado -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
       <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
     </div>
 
-    <!-- Log (colapsable) -->
     <div class="card">
       <div class="collapseHeader">
         <div style="font-weight:900;">Log</div>
@@ -347,7 +339,6 @@
 (function(){
   const $ = (s) => document.querySelector(s);
 
-  // ---- elementos
   const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
 
@@ -377,10 +368,9 @@
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
 
-  // ---- config (pega aquí tu URL DEFINITIVA)
+  // ✅ URL definitiva (cámbiala aquí si es otra)
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyb7m4sbUBeKiCTxTpr6Ff73UO86xKW4msYV-snS04vMF_TDXXR6JGg600ybxj1kPgvKw/exec";
 
-  // ---- almacenamiento (Office Runtime Storage si existe; fallback localStorage)
   function storageAvailable_(){
     try{
       return (typeof Office !== 'undefined'
@@ -441,7 +431,6 @@
     elAction.disabled = !!isBusy;
   }
 
-  // ---- Modo
   let currentMode = 'Aprendizaje';
   function setMode(mode){
     currentMode = mode === 'Producción' ? 'Producción' : 'Aprendizaje';
@@ -450,14 +439,12 @@
     log('Modo: ' + currentMode);
   }
 
-  // ---- Log colapsable (siempre oculto al iniciar)
   function setLogVisible_(visible){
     const v = !!visible;
     elLogWrap.classList.toggle('logHidden', !v);
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
-  // ---- Excel selection
   async function readSelectionExcel_(){
     if (typeof Excel === 'undefined' || !Excel.run){
       throw new Error('Excel API no disponible en este host.');
@@ -486,7 +473,6 @@
     elRangeCells.textContent = (rows && cols) ? `${rows} × ${cols} (${rows*cols} celdas)` : '—';
   }
 
-  // ---- Escribir resultado en celda activa (lo que ya tenías logrado)
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -498,23 +484,26 @@
         const cell = ctx.workbook.getActiveCell();
         cell.values = [[out]];
         cell.format.wrapText = true;
-        // (Opcional) autofit para que se vea mejor
         cell.format.autofitRows();
         cell.format.autofitColumns();
         await ctx.sync();
       });
 
-      log('Resultado pegado en celda activa.');
+      log('Resultado pegado en celda activa (solo resultado, sin uses).');
     }catch(e){
-      // No rompemos el flujo si falla pegar en Excel
       log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
     }
   }
 
-  // ---- Backend
   function getApiUrl_(){
     const v = (elApiUrl.value || '').trim();
-    return v || DEFAULT_API_URL;
+    const url = v || DEFAULT_API_URL;
+
+    // ✅ candado contra placeholders / URLs vacías
+    if (!url || url.includes('PEGA_AQUI') || url.includes('PEGA_AQUI_TU_URL_DEFINITIVA')) {
+      throw new Error('URL del backend no configurada. Pega la URL /exec de tu Web App en DEFAULT_API_URL.');
+    }
+    return url;
   }
 
   function getToken_(){
@@ -551,29 +540,21 @@
     try{
       setBusy(true);
 
-      // 1) token + recordar
       const token = getToken_();
       await storageSet_('seproincaia.token.last', token);
 
-      // 2) selección
       const selectionText = (elSelText.value || '').trim();
       if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
 
-      // 3) acción + instrucción + modo
       const action = elAction.value || 'Analizar';
       const instruction = (elInstr.value || '').trim();
 
-      const payload = {
-        selectionText,
-        instruction,
-        mode: currentMode
-      };
+      const payload = { selectionText, instruction, mode: currentMode };
 
-      // 4) POST sin preflight: text/plain
       const bodyObj = {
         action,
         token,
-        email: "",      // MVP: no pedimos email al usuario
+        email: "",
         payload
       };
 
@@ -592,19 +573,18 @@
       else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
 
       if (data && data.ok){
-        const extra = (typeof data.uses_remaining !== 'undefined')
+        // ✅ UI puede mostrar uses_remaining, pero NO se pega en celda
+        const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
 
-        const finalText = (data.result || '') + extra;
-
-        showOK(finalText);
+        const uiText = String(data.result || '') + uiExtra;
+        showOK(uiText);
         log('OK: respuesta recibida');
 
-        // ✅ Pegar en celda activa (restaurado)
-        await writeResultToActiveCell_(finalText);
+        // ✅ Pegar SOLO el resultado limpio en celda activa
+        await writeResultToActiveCell_(String(data.result || ''));
 
-        // Estado
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(true, uses);
       }else{
@@ -649,19 +629,16 @@
     }
   }
 
-  // ---- init
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
     elHostChip.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
-    // URL oculta (pero seteada)
+    // ✅ NO mostramos ni logueamos URL
     elApiUrl.value = DEFAULT_API_URL;
 
-    // Log SIEMPRE oculto al inicio (Aprendizaje y Producción)
     setLogVisible_(false);
 
-    // cargar token recordado
     const last = await storageGet_('seproincaia.token.last');
     if (last) {
       elToken.value = last;
@@ -670,11 +647,9 @@
       log('Sin token guardado todavía.');
     }
 
-    // modo default
     setMode('Aprendizaje');
     setState_(false);
 
-    // listeners
     btnUseSelection.addEventListener('click', useSelection_);
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
@@ -687,7 +662,6 @@
       setLogVisible_(isHidden);
     });
 
-    // guardar token al escribir (debounce simple)
     let tmr = null;
     elToken.addEventListener('input', () => {
       if (tmr) clearTimeout(tmr);
