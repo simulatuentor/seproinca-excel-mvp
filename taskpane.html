@@ -4,100 +4,403 @@
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Seproinca MVP</title>
+  <title>SEPROINCA-IA</title>
 
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
   <style>
-    body{ font-family: Arial, sans-serif; padding:16px; margin:0; }
-    .card{ border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-bottom:12px; }
-    label{ display:block; font-size:12px; color:#6b7280; margin:10px 0 6px; }
-    input, textarea{
-      width:100%; box-sizing:border-box; padding:10px; border:1px solid #e5e7eb; border-radius:10px;
+    :root{
+      --blue1:#1f4f86;
+      --blue2:#163d69;
+      --ink:#0f172a;
+      --muted:#6b7280;
+      --b:#e5e7eb;
+      --bg:#ffffff;
+      --card:#ffffff;
+
+      --green:#16a34a;
+      --yellow:#f59e0b;
+      --red:#ef4444;
+      --btn:#0b3a64;
+      --btn2:#0f4b82;
+
+      --shadow: 0 6px 18px rgba(15,23,42,.08);
+      --radius: 14px;
+    }
+
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: "Segoe UI", Inter, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    /* --- Header tipo producto --- */
+    .header{
+      background: linear-gradient(180deg, var(--blue1), var(--blue2));
+      color:#fff;
+      padding: 14px 14px 12px;
+      position: sticky;
+      top:0;
+      z-index: 5;
+      box-shadow: 0 4px 18px rgba(0,0,0,.18);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      letter-spacing:.5px;
+      font-size:18px;
+    }
+    .brand .logo{
+      width:22px;
+      height:22px;
+      border:2px solid rgba(255,255,255,.9);
+      border-left-color: transparent;
+      transform: rotate(45deg);
+      border-radius: 4px;
+    }
+    .sub{
+      opacity:.92;
+      font-size:12.5px;
+      margin-top:4px;
+      letter-spacing:.2px;
+    }
+
+    /* --- Contenedor --- */
+    .wrap{
+      padding: 12px 12px 18px;
+      max-width: 520px;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--b);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .label{
+      font-size:12px;
+      color: var(--muted);
+      margin: 10px 0 6px;
+    }
+
+    input, textarea, select{
+      width:100%;
+      box-sizing:border-box;
+      padding: 10px 11px;
+      border: 1px solid var(--b);
+      border-radius: 12px;
       font-size:14px;
+      outline: none;
+      background:#fff;
     }
-    textarea{ min-height:90px; resize:vertical; }
-    .row{ display:flex; gap:8px; flex-wrap:wrap; }
-    button{
-      padding:10px 12px; border:0; border-radius:10px; background:#111827; color:#fff; cursor:pointer; font-size:14px;
+    textarea{ min-height: 82px; resize: vertical; }
+
+    select{
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #334155 50%),
+        linear-gradient(135deg, #334155 50%, transparent 50%);
+      background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 34px;
     }
-    button.secondary{ background:#374151; }
-    button:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      user-select:none;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:#9ca3af;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+    }
+    .dot.green{ background: #22c55e; }
+    .dot.red{ background: #ef4444; }
+
+    .muted{ color: var(--muted); font-size: 12px; }
+    .small{ font-size: 12px; color: var(--muted); }
+
+    .btn{
+      width:100%;
+      border:0;
+      border-radius: 14px;
+      padding: 12px 12px;
+      background: linear-gradient(180deg, var(--btn2), var(--btn));
+      color:#fff;
+      font-size: 15px;
+      font-weight: 800;
+      cursor:pointer;
+      box-shadow: 0 10px 18px rgba(11,58,100,.18);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+    .btnGhost{
+      border:1px solid var(--b);
+      background:#fff;
+      color:#111827;
+      font-weight:700;
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor:pointer;
+      width:100%;
+    }
+    .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+
+    .divider{
+      height:1px;
+      background: var(--b);
+      margin: 10px 0;
+    }
+
+    .kvs{
+      display:grid;
+      grid-template-columns: 140px 1fr;
+      gap: 6px 10px;
+      font-size: 13px;
+      align-items:center;
+    }
+    .k{ color: var(--muted); font-weight:700; }
+    .v{ color: #111827; font-weight:600; word-break: break-word; overflow-wrap:anywhere; }
+
     .log{
-      background:#f6f8fa; border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size:12px; white-space:pre-wrap; max-height:240px; overflow:auto;
+      background:#f6f8fa;
+      border-radius: 12px;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      max-height: 220px;
+      overflow:auto;
+      border: 1px solid #eef2f7;
     }
-    .ok{ color:#065f46; font-weight:700; }
-    .bad{ color:#991b1b; font-weight:700; }
-    .muted{ color:#6b7280; font-size:12px; }
-    .chip{ display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; }
+
+    .ok{ color:#065f46; font-weight:900; }
+    .bad{ color:#991b1b; font-weight:900; }
+
+    .modeRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .toggle{
+      display:flex;
+      gap:0;
+      border:1px solid var(--b);
+      border-radius: 999px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .toggle button{
+      border:0;
+      background:transparent;
+      padding: 7px 10px;
+      font-weight:800;
+      cursor:pointer;
+      color:#334155;
+      font-size: 12.5px;
+    }
+    .toggle button.active{
+      background:#eaf2ff;
+      color:#0b3a64;
+    }
+
+    .hint{
+      font-size:12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
   </style>
 </head>
 
 <body>
-  <h2 style="margin:0 0 10px;">Seproinca MVP 👋</h2>
-  <div class="muted" id="status">Cargando Office...</div>
+  <div class="header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>SEPROINCA-IA</div>
+    </div>
+    <div class="sub">Asistente Técnico Estructural</div>
+    <div class="row" style="margin-top:10px; justify-content:space-between;">
+      <div class="chip" id="hostChip"><span class="dot" id="hostDot"></span> host: ?</div>
+      <div class="chip" id="tokenStateChip"><span class="dot" id="stateDot"></span> Estado: —</div>
+    </div>
+  </div>
 
-  <div class="card">
-    <div class="row" style="align-items:center; justify-content:space-between;">
-      <b>Configuración</b>
-      <div class="row">
-        <span class="chip" id="hostChip">host: ?</span>
-        <button class="secondary" id="btnPing">Ping (GET)</button>
+  <div class="wrap">
+    <!-- Configuración mínima -->
+    <div class="card">
+      <div class="modeRow">
+        <div style="font-weight:900;">Modo</div>
+        <div class="toggle" role="tablist" aria-label="Modo">
+          <button id="btnModeLearn" class="active" type="button">Aprendizaje</button>
+          <button id="btnModeProd" type="button">Producción</button>
+        </div>
       </div>
+
+      <div class="label">Token</div>
+      <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
+
+      <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
+
+      <!-- URL del backend oculta pero editable (por si tú lo necesitas) -->
+      <input id="apiUrl" type="text" style="display:none" />
     </div>
 
-    <label>Web App URL (termina en /exec)</label>
-    <input id="apiUrl" type="text" placeholder="https://script.google.com/macros/s/....../exec" />
+    <!-- Selección -->
+    <div class="card">
+      <div style="font-weight:900; margin-bottom:8px;">Rango seleccionado</div>
 
-    <label>Email</label>
-    <input id="email" type="text" placeholder="tucorreo@dominio.com" />
+      <div class="kvs">
+        <div class="k">Dirección</div><div class="v" id="rangeAddr">—</div>
+        <div class="k">Contenido</div><div class="v" id="rangeCells">—</div>
+      </div>
 
-    <label>Token</label>
-    <input id="token" type="text" placeholder="sepro-xxxxx-XXXXXX" />
+      <div class="divider"></div>
 
-    <label>Texto (si quieres, usa esto en vez de la selección)</label>
-    <textarea id="manualText" placeholder="Escribe aquí, o deja vacío para usar la selección de Excel..."></textarea>
+      <button class="btnGhost" id="btnUseSelection" type="button">Usar selección actual</button>
 
-    <div style="height:10px"></div>
-
-    <div class="row">
-      <button id="btnLeerSel" class="secondary">Leer selección</button>
-      <button id="btnAnalizar">Analizar</button>
-      <button id="btnRedactar">Redactar</button>
-      <button id="btnRevisar">Revisar</button>
-      <button id="btnDisenar">Diseñar</button>
+      <div class="label" style="margin-top:10px;">Selección (texto)</div>
+      <textarea id="selectionText" placeholder="Aquí se cargará la selección actual..."></textarea>
+      <div class="hint">Puedes editar el texto antes de ejecutar si lo deseas.</div>
     </div>
 
-    <div class="muted" style="margin-top:8px;">
-      Tip: Selecciona celdas → “Leer selección” → luego un botón. (Si no, escribe en el cuadro.)
+    <!-- Acción + instrucción -->
+    <div class="card">
+      <div style="font-weight:900; margin-bottom:8px;">¿Qué quieres hacer?</div>
+
+      <div class="label" style="margin-top:0;">Acción</div>
+      <select id="actionSelect">
+        <option value="Analizar">Analizar — Explica y resume resultados</option>
+        <option value="Redactar">Redactar — Genera texto técnico</option>
+        <option value="Revisar">Revisar — Detecta errores e inconsistencias</option>
+        <option value="Diseñar">Diseñar — Propone soluciones constructivas</option>
+      </select>
+
+      <div class="label">Instrucción (opcional)</div>
+      <input id="instruction" type="text" placeholder="Escribe algo más específico..." />
+
+      <div style="height:10px"></div>
+      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
+
+      <div class="hint" id="miniHint">Flujo: Selecciona celdas → Usar selección actual → Elegir acción → Ejecutar</div>
     </div>
-  </div>
 
-  <div class="card">
-    <b>Resultado</b>
-    <div style="height:8px"></div>
-    <div id="result" class="log"></div>
-  </div>
+    <!-- Resultado -->
+    <div class="card">
+      <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
+      <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
+    </div>
 
-  <div class="card">
-    <b>Log</b>
-    <div style="height:8px"></div>
-    <div id="log" class="log"></div>
+    <!-- Log -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:900;">Log</div>
+        <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
+      </div>
+      <div style="height:8px"></div>
+      <div id="log" class="log"></div>
+    </div>
   </div>
 
 <script>
 (function(){
   const $ = (s) => document.querySelector(s);
-  const elStatus = $('#status');
-  const elHostChip = $('#hostChip');
-  const elLog = $('#log');
-  const elResult = $('#result');
 
+  // ---- elementos
+  const elHostChip = $('#hostChip');
+  const elHostDot  = $('#hostDot');
+
+  const elToken = $('#token');
   const elApiUrl = $('#apiUrl');
-  const elEmail  = $('#email');
-  const elToken  = $('#token');
-  const elManual = $('#manualText');
+
+  const elStateChip = $('#tokenStateChip');
+  const elStateDot  = $('#stateDot');
+
+  const elRangeAddr  = $('#rangeAddr');
+  const elRangeCells = $('#rangeCells');
+
+  const elSelText = $('#selectionText');
+  const elInstr   = $('#instruction');
+  const elAction  = $('#actionSelect');
+
+  const elResult = $('#result');
+  const elLog    = $('#log');
+
+  const btnUseSelection = $('#btnUseSelection');
+  const btnExecute = $('#btnExecute');
+  const btnPing = $('#btnPing');
+
+  const btnModeLearn = $('#btnModeLearn');
+  const btnModeProd  = $('#btnModeProd');
+
+  // ---- config (pon tu URL aquí o déjala vacía para que el token sea lo único visible)
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzbPVYywib8jN1gyJzdguvNxyM2Pb-s43ApyW0Wq9XI4bM6x5da49uE2kVT3kn4nQpR3A/exec";
+
+  // ---- almacenamiento (Office Runtime Storage si existe; fallback localStorage)
+  function storageAvailable_(){
+    try{
+      return (typeof Office !== 'undefined'
+        && Office.Runtime
+        && Office.Runtime.storage
+        && typeof Office.Runtime.storage.getItem === 'function');
+    }catch(e){ return false; }
+  }
+
+  async function storageGet_(key){
+    if (storageAvailable_()){
+      const v = await Office.Runtime.storage.getItem(key);
+      return v || '';
+    }
+    return localStorage.getItem(key) || '';
+  }
+
+  async function storageSet_(key, value){
+    if (storageAvailable_()){
+      await Office.Runtime.storage.setItem(key, value);
+      return;
+    }
+    localStorage.setItem(key, value);
+  }
+
+  async function storageDel_(key){
+    if (storageAvailable_()){
+      await Office.Runtime.storage.removeItem(key);
+      return;
+    }
+    localStorage.removeItem(key);
+  }
 
   function log(msg){
     const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
@@ -111,83 +414,132 @@
       .replaceAll('>','&gt;');
   }
 
-  function showResultOk(text){
+  function showOK(text){
     elResult.innerHTML = `<span class="ok">OK</span>\n\n${escapeHtml(text || '')}`;
   }
-
-  function showResultErr(text){
+  function showERR(text){
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
-  function getConfig(){
-    const apiUrl = (elApiUrl.value || '').trim();
-    const email  = (elEmail.value || '').trim();
-    const token  = (elToken.value || '').trim();
-    if (!apiUrl) throw new Error('Falta Web App URL');
-    if (!email)  throw new Error('Falta email');
-    if (!token)  throw new Error('Falta token');
-    return { apiUrl, email, token };
+  function setBusy(isBusy){
+    [btnUseSelection, btnExecute, btnPing, btnModeLearn, btnModeProd].forEach(b => b && (b.disabled = !!isBusy));
+    elToken.disabled = !!isBusy;
+    elSelText.disabled = !!isBusy;
+    elInstr.disabled = !!isBusy;
+    elAction.disabled = !!isBusy;
   }
 
-  // ✅ Lectura REAL para Excel: Excel.run → SelectedRange.values
-  async function readSelectionAsTextExcel(){
-    if (typeof Excel === 'undefined' || !Excel.run) {
-      throw new Error('Excel API no disponible en este host. (Excel.run no existe)');
+  // ---- Modo
+  let currentMode = 'Aprendizaje';
+  function setMode(mode){
+    currentMode = mode === 'Producción' ? 'Producción' : 'Aprendizaje';
+    btnModeLearn.classList.toggle('active', currentMode === 'Aprendizaje');
+    btnModeProd.classList.toggle('active', currentMode === 'Producción');
+    log('Modo: ' + currentMode);
+  }
+
+  // ---- Excel selection
+  async function readSelectionExcel_(){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
     }
 
     return await Excel.run(async (ctx) => {
       const range = ctx.workbook.getSelectedRange();
-      range.load(['values', 'address']);
+      range.load(['values','address','rowCount','columnCount']);
       await ctx.sync();
 
-      const values = range.values;
-      if (!values || !Array.isArray(values) || !values.length) return '';
+      const addr = range.address || '—';
+      const rows = range.rowCount || 0;
+      const cols = range.columnCount || 0;
 
-      // Convertimos matriz a texto tipo TSV
-      const text = values
-        .map(row => (row || []).map(v => String(v ?? '')).join('\t'))
-        .join('\n')
-        .trim();
+      const values = range.values || [];
+      const text = (values && Array.isArray(values) && values.length)
+        ? values.map(r => (r||[]).map(v => String(v ?? '')).join('\t')).join('\n').trim()
+        : '';
 
-      return text;
+      return { addr, rows, cols, text };
     });
   }
 
-  async function pingGet(){
+  function updateRangeInfo_(addr, rows, cols){
+    elRangeAddr.textContent = addr || '—';
+    elRangeCells.textContent = (rows && cols) ? `${rows} × ${cols} (${rows*cols} celdas)` : '—';
+  }
+
+  // ---- Backend
+  function getApiUrl_(){
+    const v = (elApiUrl.value || '').trim();
+    return v || DEFAULT_API_URL;
+  }
+
+  function getToken_(){
+    const t = (elToken.value || '').trim();
+    if (!t) throw new Error('Pega tu token para continuar.');
+    return t;
+  }
+
+  async function ping_(){
     try{
-      const { apiUrl } = getConfig();
-      log('Ping GET: ' + apiUrl);
-      const res = await fetch(apiUrl, { method: 'GET' });
-      const txt = await res.text();
-      showResultOk(txt);
+      setBusy(true);
+      const url = getApiUrl_();
+      log('Ping GET: ' + url);
+      const r = await fetch(url, { method:'GET' });
+      const txt = await r.text();
+      showOK(txt);
       log('Ping OK');
-    } catch (e) {
-      showResultErr(e.message || String(e));
+    }catch(e){
+      showERR(e.message || String(e));
       log('Ping ERROR: ' + (e.message || e));
+    }finally{
+      setBusy(false);
     }
   }
 
-  // ✅ POST sin preflight: JSON como text/plain
-  async function callBackend(action){
-    setBusy(true);
+  function setState_(active, uses){
+    const ok = !!active;
+    elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
+    const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
+    elStateChip.innerHTML = `<span class="dot ${ok ? 'green' : 'red'}"></span> Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
+  }
+
+  async function execute_(){
     try{
-      const { apiUrl, email, token } = getConfig();
+      setBusy(true);
 
-      let text = (elManual.value || '').trim();
-      if (!text){
-        log('Leyendo selección con Excel.run...');
-        text = await readSelectionAsTextExcel();
-      }
-      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas con contenido.');
+      // 1) token + recordar
+      const token = getToken_();
+      await storageSet_('seproincaia.token.last', token);
 
-      const bodyObj = { action, token, email, payload: { selectionText: text } };
-      const bodyText = JSON.stringify(bodyObj);
+      // 2) selección
+      const selectionText = (elSelText.value || '').trim();
+      if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
 
-      log(`POST → ${action} (text/plain para evitar CORS)`);
-      const res = await fetch(apiUrl, {
+      // 3) acción + instrucción + modo
+      const action = elAction.value || 'Analizar';
+      const instruction = (elInstr.value || '').trim();
+
+      const payload = {
+        selectionText,
+        instruction,
+        mode: currentMode
+      };
+
+      // 4) POST sin preflight: text/plain
+      const bodyObj = {
+        action,
+        token,
+        email: "",      // MVP: no pedimos email al usuario (backend puede ignorarlo o inferirlo)
+        payload
+      };
+
+      const url = getApiUrl_();
+      log(`POST → ${action} (modo=${currentMode})`);
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: bodyText
+        body: JSON.stringify(bodyObj)
       });
 
       const ct = (res.headers.get('content-type') || '').toLowerCase();
@@ -195,76 +547,101 @@
       if (ct.includes('application/json')) data = await res.json();
       else data = { ok:false, error:'Respuesta no-JSON', detail: await res.text() };
 
-      if (data && data.ok) {
+      if (data && data.ok){
         const extra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
-        showResultOk((data.result || '') + extra);
+        showOK((data.result || '') + extra);
         log('OK: respuesta recibida');
-      } else {
+
+        // Estado
+        const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_(true, uses);
+      }else{
         const msg = (data && (data.error || data.detail))
           ? (data.error + (data.detail ? ('\n' + data.detail) : ''))
           : 'Error desconocido';
-        showResultErr(msg);
+        showERR(msg);
         log('ERROR backend: ' + msg);
+        setState_(false);
       }
-    } catch (e) {
-      showResultErr(e.message || String(e));
+
+    }catch(e){
+      showERR(e.message || String(e));
       log('ERROR: ' + (e.message || e));
-    } finally {
+      setState_(false);
+    }finally{
       setBusy(false);
     }
   }
 
-  function setBusy(isBusy){
-    ['btnLeerSel','btnAnalizar','btnRedactar','btnRevisar','btnDisenar','btnPing'].forEach(id => {
-      const b = document.getElementById(id);
-      if (b) b.disabled = !!isBusy;
-    });
-  }
-
-  // ✅ CAMBIO: Leer selección NO hace ping. Solo copia y muestra mensaje.
-  async function leerSeleccion(){
+  async function useSelection_(){
     try{
       setBusy(true);
+      const s = await readSelectionExcel_();
+      updateRangeInfo_(s.addr, s.rows, s.cols);
 
-      const t = await readSelectionAsTextExcel();
-      elManual.value = t;
+      elSelText.value = s.text || '';
 
-      if (!t) {
-        showResultErr('Selección vacía. Selecciona celdas con contenido.');
+      if (!s.text){
+        showERR('Selección vacía. Selecciona celdas con contenido.');
         log('Selección vacía.');
         return;
       }
 
-      const n = t.length;
-      showResultOk(`Selección cargada (${n} caracteres).`);
-      log(`Selección copiada al cuadro (${n} caracteres).`);
-
-    } catch(e){
-      showResultErr(e.message || String(e));
-      log('ERROR leer selección: ' + (e.message || e));
-    } finally {
+      showOK(`Selección cargada (${s.text.length} caracteres).`);
+      log(`Selección cargada: ${s.addr} (${s.rows}×${s.cols}).`);
+    }catch(e){
+      showERR(e.message || String(e));
+      log('ERROR selección: ' + (e.message || e));
+    }finally{
       setBusy(false);
     }
   }
 
-  Office.onReady((info) => {
-    const host = info && info.host ? info.host : 'unknown';
+  // ---- init
+  Office.onReady(async (info) => {
+    const host = (info && info.host) ? info.host : 'unknown';
     elHostChip.textContent = 'host: ' + host;
+    elHostDot.className = 'dot green';
 
-    elStatus.textContent = 'Office listo ✅';
+    // URL oculta (pero seteada)
+    elApiUrl.value = DEFAULT_API_URL;
+
+    // cargar token recordado
+    const last = await storageGet_('seproincaia.token.last');
+    if (last) {
+      elToken.value = last;
+      log('Token cargado desde memoria local.');
+    } else {
+      log('Sin token guardado todavía.');
+    }
+
+    // modo default
+    setMode('Aprendizaje');
+    setState_(false);
+
+    // listeners
+    btnUseSelection.addEventListener('click', useSelection_);
+    btnExecute.addEventListener('click', execute_);
+    btnPing.addEventListener('click', ping_);
+
+    btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
+    btnModeProd.addEventListener('click', () => setMode('Producción'));
+
+    // guardar token al escribir (debounce simple)
+    let tmr = null;
+    elToken.addEventListener('input', () => {
+      if (tmr) clearTimeout(tmr);
+      tmr = setTimeout(async () => {
+        const t = (elToken.value || '').trim();
+        if (t) await storageSet_('seproincaia.token.last', t);
+        else await storageDel_('seproincaia.token.last');
+      }, 350);
+    });
+
+    showOK('Listo.\n\n1) Pega tu token\n2) Selecciona celdas → “Usar selección actual”\n3) Elige acción\n4) Ejecutar');
     log('Office.onReady OK (host=' + host + ')');
-
-    $('#btnPing').addEventListener('click', pingGet);
-    $('#btnLeerSel').addEventListener('click', leerSeleccion);
-
-    $('#btnAnalizar').addEventListener('click', () => callBackend('Analizar'));
-    $('#btnRedactar').addEventListener('click', () => callBackend('Redactar'));
-    $('#btnRevisar').addEventListener('click', () => callBackend('Revisar'));
-    $('#btnDisenar').addEventListener('click', () => callBackend('Diseñar'));
-
-    showResultOk('Listo.\n\n1) Pega URL/email/token\n2) Selecciona celdas → Leer selección\n3) Analizar');
   });
 
 })();
