@@ -223,15 +223,24 @@
     });
   }
 
+  // ✅ CAMBIO: Leer selección NO hace ping. Solo copia y muestra mensaje.
   async function leerSeleccion(){
     try{
       setBusy(true);
+
       const t = await readSelectionAsTextExcel();
       elManual.value = t;
-      log('Selección copiada al cuadro de texto.');
+
       if (!t) {
-        showResultErr('La selección está vacía. Selecciona celdas con contenido.');
+        showResultErr('Selección vacía. Selecciona celdas con contenido.');
+        log('Selección vacía.');
+        return;
       }
+
+      const n = t.length;
+      showResultOk(`Selección cargada (${n} caracteres).`);
+      log(`Selección copiada al cuadro (${n} caracteres).`);
+
     } catch(e){
       showResultErr(e.message || String(e));
       log('ERROR leer selección: ' + (e.message || e));
@@ -255,7 +264,7 @@
     $('#btnRevisar').addEventListener('click', () => callBackend('Revisar'));
     $('#btnDisenar').addEventListener('click', () => callBackend('Diseñar'));
 
-    showResultOk('Listo.\n\n1) Pega URL/email/token\n2) Escribe texto o selecciona celdas\n3) Analizar');
+    showResultOk('Listo.\n\n1) Pega URL/email/token\n2) Selecciona celdas → Leer selección\n3) Analizar');
   });
 
 })();
