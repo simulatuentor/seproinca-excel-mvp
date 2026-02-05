@@ -2,10 +2,269 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Seproinca MVP</title>
+
+  <!-- Office.js (requerido en taskpane) -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+  <style>
+    body{ font-family: Arial, sans-serif; padding:16px; margin:0; }
+    .card{ border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-bottom:12px; }
+    label{ display:block; font-size:12px; color:#6b7280; margin:10px 0 6px; }
+    input, textarea{
+      width:100%; box-sizing:border-box; padding:10px; border:1px solid #e5e7eb; border-radius:10px;
+      font-size:14px;
+    }
+    textarea{ min-height:90px; resize:vertical; }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; }
+    button{
+      padding:10px 12px; border:0; border-radius:10px; background:#111827; color:#fff; cursor:pointer; font-size:14px;
+    }
+    button.secondary{ background:#374151; }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .log{
+      background:#f6f8fa; border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size:12px; white-space:pre-wrap; max-height:220px; overflow:auto;
+    }
+    .ok{ color:#065f46; font-weight:700; }
+    .bad{ color:#991b1b; font-weight:700; }
+    .muted{ color:#6b7280; font-size:12px; }
+  </style>
 </head>
-<body style="font-family: Arial; padding: 16px;">
-  <h2>Hola Seproinca 👋</h2>
-  <p>Si estás viendo esto dentro de Excel, el test pasó ✅</p>
+
+<body>
+  <h2 style="margin:0 0 10px;">Seproinca MVP 👋</h2>
+  <div class="muted" id="status">Cargando Office...</div>
+
+  <div class="card">
+    <div class="row" style="align-items:center; justify-content:space-between;">
+      <b>Configuración</b>
+      <button class="secondary" id="btnPing">Ping (GET)</button>
+    </div>
+
+    <label>Web App URL (termina en /exec)</label>
+    <input id="apiUrl" type="text" placeholder="https://script.google.com/macros/s/....../exec" />
+
+    <label>Email</label>
+    <input id="email" type="text" placeholder="tucorreo@dominio.com" />
+
+    <label>Token</label>
+    <input id="token" type="text" placeholder="sepro-xxxxx-XXXXXX" />
+
+    <label>Texto (si quieres, usa esto en vez de la selección)</label>
+    <textarea id="manualText" placeholder="Escribe aquí, o deja vacío para usar la selección de Excel..."></textarea>
+
+    <div style="height:10px"></div>
+
+    <div class="row">
+      <button id="btnLeerSel" class="secondary">Leer selección</button>
+      <button id="btnAnalizar">Analizar</button>
+      <button id="btnRedactar">Redactar</button>
+      <button id="btnRevisar">Revisar</button>
+      <button id="btnDisenar">Diseñar</button>
+    </div>
+
+    <div class="muted" style="margin-top:8px;">
+      Tip: Selecciona celdas en Excel → “Leer selección” → luego un botón.
+    </div>
+  </div>
+
+  <div class="card">
+    <b>Resultado</b>
+    <div style="height:8px"></div>
+    <div id="result" class="log"></div>
+  </div>
+
+  <div class="card">
+    <b>Log</b>
+    <div style="height:8px"></div>
+    <div id="log" class="log"></div>
+  </div>
+
+<script>
+(function(){
+  const $ = (s) => document.querySelector(s);
+  const elStatus = $('#status');
+  const elLog = $('#log');
+  const elResult = $('#result');
+
+  const elApiUrl = $('#apiUrl');
+  const elEmail  = $('#email');
+  const elToken  = $('#token');
+  const elManual = $('#manualText');
+
+  // === AJUSTA AQUÍ si quieres valores por defecto ===
+  // elApiUrl.value = "PEGA_AQUI_TU_URL_/exec";
+  // elEmail.value  = "correopruebaluisana@gmail.com";
+  // elToken.value  = "sepro-manoo-NW5N2G";
+
+  function log(msg){
+    const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+    elLog.textContent = line + (elLog.textContent || '');
+  }
+
+  function showResultOk(text){
+    elResult.innerHTML = `<span class="ok">OK</span>\n\n${escapeHtml(text || '')}`;
+  }
+
+  function showResultErr(text){
+    elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
+  }
+
+  function escapeHtml(s){
+    return String(s || '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
+  }
+
+  function getConfig(){
+    const apiUrl = (elApiUrl.value || '').trim();
+    const email  = (elEmail.value || '').trim();
+    const token  = (elToken.value || '').trim();
+    if (!apiUrl) throw new Error('Falta Web App URL');
+    if (!email)  throw new Error('Falta email');
+    if (!token)  throw new Error('Falta token');
+    return { apiUrl, email, token };
+  }
+
+  function readSelectionText(){
+    return new Promise((resolve, reject) => {
+      try{
+        Office.context.document.getSelectedDataAsync(
+          Office.CoercionType.Text,
+          { valueFormat: "Unformatted" },
+          (asyncResult) => {
+            if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+              resolve(String(asyncResult.value || '').trim());
+            } else {
+              reject(new Error(asyncResult.error && asyncResult.error.message ? asyncResult.error.message : 'No se pudo leer la selección'));
+            }
+          }
+        );
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  async function pingGet(){
+    try{
+      const { apiUrl } = getConfig();
+      log('Ping GET: ' + apiUrl);
+      const res = await fetch(apiUrl, { method: 'GET' });
+      const txt = await res.text();
+      showResultOk(txt);
+      log('Ping OK');
+    } catch (e) {
+      showResultErr(e.message || String(e));
+      log('Ping ERROR: ' + (e.message || e));
+    }
+  }
+
+  async function callBackend(action){
+    // Deshabilitar botones mientras llama
+    setBusy(true);
+
+    try{
+      const { apiUrl, email, token } = getConfig();
+
+      // texto a enviar: manual si existe, si no, selección de Excel
+      let text = (elManual.value || '').trim();
+      if (!text){
+        log('Leyendo selección de Excel...');
+        text = await readSelectionText();
+      }
+      if (!text) throw new Error('No hay texto: escribe en el cuadro o selecciona celdas en Excel.');
+
+      const body = {
+        action,
+        token,
+        email,
+        payload: { selectionText: text }
+      };
+
+      log(`POST → ${action}`);
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      // Si no es JSON, lo mostramos igual
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const t = await res.text();
+        data = { ok: false, error: 'Respuesta no-JSON', detail: t };
+      }
+
+      if (data && data.ok) {
+        const extra = (typeof data.uses_remaining !== 'undefined')
+          ? `\n\n[uses_remaining: ${data.uses_remaining}]`
+          : '';
+        showResultOk((data.result || '') + extra);
+        log('OK: respuesta recibida');
+      } else {
+        const msg = (data && (data.error || data.detail)) ? (data.error + (data.detail ? ('\n' + data.detail) : '')) : 'Error desconocido';
+        showResultErr(msg);
+        log('ERROR backend: ' + msg);
+      }
+
+    } catch (e) {
+      // Aquí caerá también si hay CORS / Failed to fetch
+      showResultErr(e.message || String(e));
+      log('ERROR fetch: ' + (e.message || e));
+      log('Si dice "Failed to fetch" o CORS, hay que ajustar el backend para CORS/OPTIONS o usar proxy.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function setBusy(isBusy){
+    ['btnLeerSel','btnAnalizar','btnRedactar','btnRevisar','btnDisenar','btnPing'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = !!isBusy;
+    });
+  }
+
+  async function leerSeleccion(){
+    try{
+      setBusy(true);
+      const t = await readSelectionText();
+      elManual.value = t;
+      log('Selección copiada al cuadro de texto.');
+    } catch(e){
+      showResultErr(e.message || String(e));
+      log('ERROR leer selección: ' + (e.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Office init
+  Office.onReady(() => {
+    elStatus.textContent = 'Office listo ✅';
+    log('Office.onReady OK');
+
+    $('#btnPing').addEventListener('click', pingGet);
+    $('#btnLeerSel').addEventListener('click', leerSeleccion);
+
+    $('#btnAnalizar').addEventListener('click', () => callBackend('Analizar'));
+    $('#btnRedactar').addEventListener('click', () => callBackend('Redactar'));
+    $('#btnRevisar').addEventListener('click', () => callBackend('Revisar'));
+    $('#btnDisenar').addEventListener('click', () => callBackend('Diseñar'));
+
+    // Mensaje inicial
+    showResultOk('Listo. Configura URL/email/token y prueba.\n\n1) Selecciona celdas\n2) Leer selección\n3) Analizar');
+  });
+
+})();
+</script>
+
 </body>
 </html>
