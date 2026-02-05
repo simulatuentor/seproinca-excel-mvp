@@ -562,17 +562,58 @@
     }
   }
 
+  // ==========================================================
+  // ✅ UX: traducir errores backend → mensajes humanos
+  // ==========================================================
+
+  function _userMessageForError_(code, detail){
+    const c = String(code || '').trim().toLowerCase();
+
+    // Mensajes breves, para usuario final
+    const MAP = {
+      'invalid_token': 'Token inválido. Verifica que lo hayas copiado correctamente.',
+      'missing_token': 'Pega tu token para continuar.',
+      'expired': 'Tu token está vencido. Solicita/renueva tu acceso para continuar.',
+      'no_uses_remaining': 'Se agotaron tus usos. Renueva tu plan para seguir utilizando SEPROINCA-IA.',
+      'token_email_mismatch': 'Este token no corresponde a tu usuario. Verifica que sea el token correcto.',
+      'invalid_action': 'Acción no válida. Selecciona una opción del menú.',
+      'missing_action': 'Selecciona una acción antes de ejecutar.',
+      'invalid_json': 'Solicitud inválida. Cierra y vuelve a abrir el complemento e intenta de nuevo.',
+      'missing_openai_api_key': 'Servicio no disponible. Contacta al soporte de SEPROINCA-IA.',
+      'openai_bad_json': 'Servicio temporalmente inestable. Intenta nuevamente.',
+      'server_error': 'Ocurrió un error interno. Intenta nuevamente.',
+      'auth_error': 'No se pudo validar tu acceso. Verifica tu token.'
+    };
+
+    if (MAP[c]) return MAP[c];
+
+    // fallback por familias (sin exponer códigos técnicos en UI)
+    if (c.startsWith('openai_http_')) return 'Servicio temporalmente no disponible. Intenta nuevamente.';
+    if (c.startsWith('timeout_')) return 'La solicitud tardó demasiado. Intenta nuevamente.';
+    if (c.includes('respuesta no-json')) return 'El servidor respondió de forma inesperada. Intenta nuevamente.';
+
+    // si hay detail útil (solo si es “limpio”)
+    const d = String(detail || '').trim();
+    if (d && d.length <= 160 && !/[<>{}]/.test(d)) return d;
+
+    return 'No fue posible completar la solicitud. Verifica tu token e intenta nuevamente.';
+  }
+
   function _formatBackendError_(data, fallbackRaw){
-    // Contrato backend: {ok:false, error, detail?, http?}
-    if (data && typeof data === 'object'){
-      const code = data.error || 'error';
-      const det  = data.detail ? String(data.detail) : '';
-      const http = (typeof data.http !== 'undefined') ? ` (http=${data.http})` : '';
-      return String(code) + http + (det ? ('\n' + det) : '');
-    }
-    const raw = String(fallbackRaw || '').trim();
-    if (raw) return 'Respuesta no-JSON\n' + raw.slice(0, 1200);
-    return 'Error desconocido';
+    // data: {ok:false, error, detail?, http?}
+    const code = (data && typeof data === 'object') ? data.error : '';
+    const det  = (data && typeof data === 'object') ? data.detail : '';
+
+    // UI: mensaje humano
+    const userMsg = _userMessageForError_(code, det);
+
+    // Log: mantén técnico para depurar
+    const http = (data && typeof data.http !== 'undefined') ? ` (http=${data.http})` : '';
+    const tech = (code ? (String(code) + http) : 'unknown_error');
+    const detailTxt = det ? (' | ' + String(det)) : '';
+
+    // Para pantalla solo humano
+    return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
   async function ping_(){
@@ -590,14 +631,13 @@
       }, API_TIMEOUT_MS_PING);
 
       if (!out.ok && out.error){
-        showERR('Ping ERROR: ' + out.error);
+        showERR('No se pudo conectar. ' + out.error);
         log('Ping ERROR: ' + out.error);
         setState_(false);
         return;
       }
 
       if (out.ok && out.data){
-        // ✅ backend doGet devuelve {ok:true, service, version, now}
         const d = out.data;
         if (d.ok){
           const txt = [
@@ -607,13 +647,13 @@
           ].join('\n');
           showOK(txt);
           log('Ping OK (version=' + (d.version || '—') + ')');
-          // Ping no valida token, así que no tocamos estado de token.
         }else{
-          showERR(_formatBackendError_(d, out.raw));
-          log('Ping ERROR (backend): ' + _formatBackendError_(d, out.raw));
+          const f = _formatBackendError_(d, out.raw);
+          showERR(f.userMsg);
+          log('Ping ERROR (backend): ' + f.techMsg);
         }
       }else{
-        showERR(_formatBackendError_(null, out.raw));
+        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
         log('Ping ERROR: respuesta no JSON');
       }
 
@@ -666,9 +706,9 @@
       }, API_TIMEOUT_MS_POST);
 
       if (!out.ok && out.error){
-        const msg = 'ERROR red: ' + out.error;
+        const msg = 'No se pudo conectar. ' + out.error;
         showERR(msg);
-        log(msg);
+        log('ERROR red: ' + out.error);
         setState_(false);
         return;
       }
@@ -676,7 +716,6 @@
       const data = out.data;
 
       if (data && data.ok){
-        // ✅ UI puede mostrar uses_remaining, pero NO se pega en celda
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -692,12 +731,10 @@
         setState_(true, uses);
 
       }else{
-        // ✅ error JSON claro (o fallback)
-        const msg = _formatBackendError_(data, out.raw);
-        showERR(msg);
-        log('ERROR backend: ' + msg);
+        const f = _formatBackendError_(data, out.raw);
+        showERR(f.userMsg);
+        log('ERROR backend: ' + f.techMsg);
 
-        // Si backend manda uses_remaining en error (opcional), lo reflejamos
         const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_(false, usesErr);
       }
