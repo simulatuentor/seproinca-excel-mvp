@@ -252,8 +252,17 @@
     </div>
     <div class="sub">Asistente Técnico Estructural</div>
     <div class="row" style="margin-top:10px; justify-content:space-between;">
-      <div class="chip" id="hostChip"><span class="dot" id="hostDot"></span> host: ?</div>
-      <div class="chip" id="tokenStateChip"><span class="dot" id="stateDot"></span> Estado: —</div>
+      <!-- ✅ FIX: mantener hostDot vivo -->
+      <div class="chip" id="hostChip">
+        <span class="dot" id="hostDot"></span>
+        <span id="hostText">host: ?</span>
+      </div>
+
+      <!-- ✅ FIX: mantener stateDot vivo -->
+      <div class="chip" id="tokenStateChip">
+        <span class="dot" id="stateDot"></span>
+        <span id="stateText">Estado: —</span>
+      </div>
     </div>
   </div>
 
@@ -339,14 +348,15 @@
 (function(){
   const $ = (s) => document.querySelector(s);
 
-  const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
+  const elHostText = $('#hostText');
 
   const elToken = $('#token');
   const elApiUrl = $('#apiUrl');
 
   const elStateChip = $('#tokenStateChip');
   const elStateDot  = $('#stateDot');
+  const elStateText = $('#stateText');
 
   const elRangeAddr  = $('#rangeAddr');
   const elRangeCells = $('#rangeCells');
@@ -519,8 +529,9 @@
   function setState_(active, uses){
     const ok = !!active;
     elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
+
     const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
-    elStateChip.innerHTML = `<span class="dot ${ok ? 'green' : 'red'}"></span> Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
+    elStateText.textContent = `Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
   }
 
   // ==========================================================
@@ -774,7 +785,9 @@
 
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
-    elHostChip.textContent = 'host: ' + host;
+
+    // ✅ FIX: no destruir hostDot
+    elHostText.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
     // ✅ NO mostramos ni logueamos URL
