@@ -139,6 +139,7 @@
     }
     .dot.green{ background: #22c55e; }
     .dot.red{ background: #ef4444; }
+    .dot.neutral{ background:#9ca3af; } /* ✅ nuevo: estado inicial */
 
     .btn{
       width:100%;
@@ -252,16 +253,12 @@
     </div>
     <div class="sub">Asistente Técnico Estructural</div>
     <div class="row" style="margin-top:10px; justify-content:space-between;">
-      <!-- ✅ FIX: mantener hostDot vivo -->
-      <div class="chip" id="hostChip">
-        <span class="dot" id="hostDot"></span>
-        <span id="hostText">host: ?</span>
-      </div>
+      <div class="chip" id="hostChip"><span class="dot" id="hostDot"></span> host: ?</div>
 
-      <!-- ✅ FIX: mantener stateDot vivo -->
+      <!-- ✅ cambio: agregamos span para texto del estado -->
       <div class="chip" id="tokenStateChip">
-        <span class="dot" id="stateDot"></span>
-        <span id="stateText">Estado: —</span>
+        <span class="dot neutral" id="stateDot"></span>
+        <span id="stateText">Estado: listo para ejecutar</span>
       </div>
     </div>
   </div>
@@ -348,15 +345,15 @@
 (function(){
   const $ = (s) => document.querySelector(s);
 
+  const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
-  const elHostText = $('#hostText');
 
   const elToken = $('#token');
   const elApiUrl = $('#apiUrl');
 
   const elStateChip = $('#tokenStateChip');
   const elStateDot  = $('#stateDot');
-  const elStateText = $('#stateText');
+  const elStateText = $('#stateText'); // ✅ nuevo
 
   const elRangeAddr  = $('#rangeAddr');
   const elRangeCells = $('#rangeCells');
@@ -526,12 +523,19 @@
     return t;
   }
 
-  function setState_(active, uses){
-    const ok = !!active;
-    elStateDot.className = 'dot ' + (ok ? 'green' : 'red');
+  // ✅ Nuevo: 3 estados (neutral/active/invalid)
+  function setState_(state, uses){
+    const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
+
+    elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
+
+    if (s === 'neutral'){
+      elStateText.textContent = 'Estado: listo para ejecutar';
+      return;
+    }
 
     const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
-    elStateText.textContent = `Estado: ${ok ? 'Activo' : 'No válido'}${u}`;
+    elStateText.textContent = `Estado: ${s === 'active' ? 'Activo' : 'No válido'}${u}`;
   }
 
   // ==========================================================
@@ -644,7 +648,7 @@
       if (!out.ok && out.error){
         showERR('No se pudo conectar. ' + out.error);
         log('Ping ERROR: ' + out.error);
-        setState_(false);
+        setState_('neutral'); // ✅ antes era inválido: ahora neutral
         return;
       }
 
@@ -658,20 +662,24 @@
           ].join('\n');
           showOK(txt);
           log('Ping OK (version=' + (d.version || '—') + ')');
+          // ping no valida token -> mantenemos neutral
+          setState_('neutral');
         }else{
           const f = _formatBackendError_(d, out.raw);
           showERR(f.userMsg);
           log('Ping ERROR (backend): ' + f.techMsg);
+          setState_('neutral');
         }
       }else{
         showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
         log('Ping ERROR: respuesta no JSON');
+        setState_('neutral');
       }
 
     }catch(e){
       showERR(e.message || String(e));
       log('Ping ERROR: ' + (e.message || e));
-      setState_(false);
+      setState_('neutral');
     }finally{
       setBusy(false);
     }
@@ -720,7 +728,7 @@
         const msg = 'No se pudo conectar. ' + out.error;
         showERR(msg);
         log('ERROR red: ' + out.error);
-        setState_(false);
+        setState_('neutral'); // ✅ error de red => neutral
         return;
       }
 
@@ -739,7 +747,7 @@
         await writeResultToActiveCell_(String(data.result || ''));
 
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-        setState_(true, uses);
+        setState_('active', uses); // ✅ ahora activo
 
       }else{
         const f = _formatBackendError_(data, out.raw);
@@ -747,13 +755,13 @@
         log('ERROR backend: ' + f.techMsg);
 
         const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-        setState_(false, usesErr);
+        setState_('invalid', usesErr); // ✅ ahora inválido solo si backend respondió error real
       }
 
     }catch(e){
       showERR(e.message || String(e));
       log('ERROR: ' + (e.message || e));
-      setState_(false);
+      setState_('neutral'); // ✅ errores locales => neutral
     }finally{
       setBusy(false);
     }
@@ -785,9 +793,7 @@
 
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
-
-    // ✅ FIX: no destruir hostDot
-    elHostText.textContent = 'host: ' + host;
+    elHostChip.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
     // ✅ NO mostramos ni logueamos URL
@@ -804,7 +810,7 @@
     }
 
     setMode('Aprendizaje');
-    setState_(false);
+    setState_('neutral'); // ✅ estado inicial por defecto (ya no sale "No válido")
 
     btnUseSelection.addEventListener('click', useSelection_);
     btnExecute.addEventListener('click', execute_);
