@@ -276,7 +276,6 @@
       <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
       <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
 
-      <!-- URL del backend oculta (solo para ti) -->
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
@@ -309,7 +308,6 @@
         <option value="Redactar">Redactar — Genera texto técnico</option>
         <option value="Revisar">Revisar — Detecta errores e inconsistencias</option>
         <option value="Diseñar">Diseñar — Propone soluciones constructivas</option>
-        <!-- ✅ NUEVO -->
         <option value="Barras">Barras — Propone 2 opciones (SUP/INF) desde nombres</option>
       </select>
 
@@ -379,7 +377,6 @@
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
 
-  // ✅ URL definitiva
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
   const API_TIMEOUT_MS_PING = 15000;
@@ -509,7 +506,6 @@
     }
   }
 
-  // ✅ NUEVO: escribe tabla de barras a partir de la celda activa
   async function writeBarsOutputToSheet_(barsData, summaryText){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -525,12 +521,10 @@
         const sup = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
         const inf = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
 
-        // Resumen en la celda activa
         const summary = String(summaryText || '').trim();
         start.values = [[summary || '✅ Propuesta de barras generada.']];
         start.format.wrapText = true;
 
-        // Tabla debajo (fila +2)
         const header = [
           "Zona","Opción","n1","Ø1 (mm)","n2","Ø2 (mm)","As_prov (cm²)","Exceso (cm²)","kg (si L)"
         ];
@@ -656,7 +650,6 @@
     };
 
     if (MAP[c]) return MAP[c];
-
     if (c.startsWith('openai_http_')) return 'Servicio temporalmente no disponible. Intenta nuevamente.';
     if (c.startsWith('timeout_')) return 'La solicitud tardó demasiado. Intenta nuevamente.';
 
@@ -730,39 +723,89 @@
     }
   }
 
-  // ==========================
-  // ✅ NUEVO: leer nombres
-  // ==========================
+  // ==========================================================
+  // ✅ FIX CLAVE: leer NamedItems sin "recurso no existe"
+  // - Soporta: nombre inexistente, nombre tipo Range, nombre tipo valor/constante.
+  // - Evita getRange() cuando no corresponde.
+  // ==========================================================
+  function _toNumberOrNull_(v){
+    if (v === null || typeof v === 'undefined') return null;
+    const s = String(v).replace(',', '.').trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
   async function readNamedNumbers_(names){
     if (typeof Excel === 'undefined' || !Excel.run){
       throw new Error('Excel API no disponible en este host.');
     }
 
     return await Excel.run(async (ctx) => {
-      const outRanges = {};
+      const items = {};
+
+      // 1) Obtener NamedItems sin lanzar error
       for (const nm of names){
-        try{
-          const named = ctx.workbook.names.getItem(nm);
-          const rng = named.getRange();
-          rng.load("values");
-          outRanges[nm] = rng;
-        }catch(e){
-          outRanges[nm] = null;
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      // 2) Preparar lectura de rangos SOLO si type == Range
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){
+          rangeToLoad[nm] = null;
+          continue;
+        }
+
+        // type suele venir como "Range", "String", "Double", etc.
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            // Si por alguna razón el Range no es resoluble
+            rangeToLoad[nm] = null;
+          }
+        }else{
+          rangeToLoad[nm] = null;
+        }
+      }
+      await ctx.sync();
+
+      // 3) Armar resultado numérico (Range -> values[0][0], no-Range -> value)
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){
+          res[nm] = null;
+          continue;
+        }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          res[nm] = _toNumberOrNull_(v);
+        }else{
+          // value puede ser number/string/bool
+          res[nm] = _toNumberOrNull_(it.value);
         }
       }
 
-      await ctx.sync();
-
-      const res = {};
-      for (const nm of names){
-        const rng = outRanges[nm];
-        if (!rng) { res[nm] = null; continue; }
-        const v = rng.values && rng.values[0] ? rng.values[0][0] : null;
-        const n = Number(String(v ?? '').replace(',', '.').trim());
-        res[nm] = Number.isFinite(n) ? n : null;
-      }
       return res;
     });
+  }
+
+  function _makeReqId_(){
+    const a = Date.now().toString(36).slice(-6);
+    const b = Math.random().toString(36).slice(2, 6);
+    return `x${a}${b}`;
   }
 
   async function execute_(){
@@ -777,17 +820,16 @@
 
       let payload = { selectionText: '', instruction, mode: currentMode };
 
-      // ✅ SOLO exigir selección cuando NO es Barras
       if (action !== 'Barras'){
         const selectionText = (elSelText.value || '').trim();
         if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
         payload.selectionText = selectionText;
       }else{
-        // ✅ Barras: leer nombres
-        // Requeridos: As_req_neg, As_req_pos
-        // Opcional:   L_m
+        // ✅ Barras: requeridos As_req_neg, As_req_pos; opcional L_m
         const vals = await readNamedNumbers_(["As_req_neg", "As_req_pos", "L_m"]);
-        if (!vals.As_req_neg || !vals.As_req_pos){
+
+        // ✅ FIX: no uses "!x" (falsy). Usa null-check.
+        if (vals.As_req_neg == null || vals.As_req_pos == null){
           throw new Error('Faltan nombres en Excel: As_req_neg y/o As_req_pos (Administrador de nombres).');
         }
 
@@ -795,7 +837,7 @@
           kind: "fundamentos_barras_v1",
           As_req_neg_cm2: vals.As_req_neg,
           As_req_pos_cm2: vals.As_req_pos,
-          L_m: (vals.L_m && vals.L_m > 0) ? vals.L_m : null,
+          L_m: (vals.L_m != null && vals.L_m > 0) ? vals.L_m : null,
           instruction,
           mode: currentMode
         };
@@ -839,18 +881,15 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
-        // ✅ Caso Barras: escribe tabla + resumen
         if (action === 'Barras'){
           const summary = String(data.result || '').trim();
           showOK(summary || '✅ Propuesta de barras generada.');
 
-          // escribe resumen en celda activa + tabla debajo
           const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
           await writeBarsOutputToSheet_(barsData, summary);
           return;
         }
 
-        // ✅ Otros modos: mostrar + pegar SOLO result
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -906,7 +945,6 @@
     elHostChip.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
-    // ✅ NO mostramos ni logueamos URL
     elApiUrl.value = DEFAULT_API_URL;
 
     setLogVisible_(false);
