@@ -308,7 +308,7 @@
         <option value="Redactar">Redactar — Genera texto técnico</option>
         <option value="Revisar">Revisar — Detecta errores e inconsistencias</option>
         <option value="Diseñar">Diseñar — Propone soluciones constructivas</option>
-        <option value="Barras">Barras — Propone 2 opciones (SUP/INF) desde nombres</option>
+        <option value="Barras">Barras — Propone 1 opción (SUP/INF) y llena celdas por nombre</option>
       </select>
 
       <div class="label">Instrucción (opcional)</div>
@@ -319,7 +319,7 @@
 
       <div class="hint" id="miniHint">
         Flujo general: Selecciona celdas → Usar selección actual → (muévete a la celda destino) → Ejecutar
-        <br>Modo Barras: (muévete a la celda destino) → Ejecutar
+        <br>Modo Barras: Ejecutar (rellena celdas por nombre)
       </div>
     </div>
 
@@ -506,70 +506,6 @@
     }
   }
 
-  async function writeBarsOutputToSheet_(barsData, summaryText){
-    try{
-      if (typeof Excel === 'undefined' || !Excel.run) return;
-
-      await Excel.run(async (ctx) => {
-        const start = ctx.workbook.getActiveCell();
-        start.load(["rowIndex","columnIndex","address"]);
-        await ctx.sync();
-
-        const r0 = start.rowIndex;
-        const c0 = start.columnIndex;
-
-        const sup = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-        const inf = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
-
-        const summary = String(summaryText || '').trim();
-        start.values = [[summary || '✅ Propuesta de barras generada.']];
-        start.format.wrapText = true;
-
-        const header = [
-          "Zona","Opción","n1","Ø1 (mm)","n2","Ø2 (mm)","As_prov (cm²)","Exceso (cm²)","kg (si L)"
-        ];
-
-        const rows = [];
-        const pushOpt = (zona, iOpt, o) => {
-          rows.push([
-            zona,
-            `Opción ${iOpt}`,
-            o && o.n_1 != null ? Number(o.n_1) : "",
-            o && o.diam_1_mm != null ? Number(o.diam_1_mm) : "",
-            o && o.n_2 ? Number(o.n_2) : "",
-            o && o.diam_2_mm ? Number(o.diam_2_mm) : "",
-            o && o.As_prov_cm2 != null ? Number(o.As_prov_cm2) : "",
-            o && o.excess_cm2 != null ? Number(o.excess_cm2) : "",
-            (o && o.kg_for_L != null) ? Number(o.kg_for_L) : ""
-          ]);
-        };
-
-        for (let i=0;i<sup.length && i<2;i++) pushOpt("SUP", i+1, sup[i]);
-        for (let i=0;i<inf.length && i<2;i++) pushOpt("INF", i+1, inf[i]);
-
-        if (!rows.length){
-          rows.push(["—","—","","","","","","",""]);
-        }
-
-        const table = [header, ...rows];
-
-        const tableRange = ctx.workbook.worksheets.getActiveWorksheet()
-          .getRangeByIndexes(r0 + 2, c0, table.length, header.length);
-
-        tableRange.values = table;
-        tableRange.format.wrapText = true;
-        tableRange.format.autofitColumns();
-        tableRange.format.autofitRows();
-
-        await ctx.sync();
-      });
-
-      log('Tabla de barras escrita a partir de la celda activa.');
-    }catch(e){
-      log('WARN: no se pudo escribir tabla de barras (' + (e.message || e) + ')');
-    }
-  }
-
   function getApiUrl_(){
     const v = (elApiUrl.value || '').trim();
     const url = v || DEFAULT_API_URL;
@@ -672,6 +608,211 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
+  // ==========================
+  // FIX: leer nombres (Range o valor)
+  // ==========================
+  function _toNumberOrNull_(v){
+    if (v === null || typeof v === 'undefined') return null;
+    const s = String(v).replace(',', '.').trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  async function readNamedNumbers_(names){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const items = {};
+
+      for (const nm of names){
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            rangeToLoad[nm] = null;
+          }
+        }else{
+          rangeToLoad[nm] = null;
+        }
+      }
+      await ctx.sync();
+
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ res[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          res[nm] = _toNumberOrNull_(v);
+        }else{
+          res[nm] = _toNumberOrNull_(it.value);
+        }
+      }
+
+      return res;
+    });
+  }
+
+  // ==========================
+  // NUEVO: formateo de diámetros (mm -> fracción)
+  // ==========================
+  function _diamFractionFromMm_(mm){
+    const x = Number(mm);
+    if (!Number.isFinite(x)) return null;
+
+    const tol = 0.25; // tolerancia mm
+    const MAP = [
+      { mm: 6.35,  s: '1/4"' },
+      { mm: 7.94,  s: '5/16"' },
+      { mm: 9.53,  s: '3/8"' },
+      { mm: 12.70, s: '1/2"' },
+      { mm: 15.88, s: '5/8"' },
+      { mm: 19.05, s: '3/4"' },
+      { mm: 25.40, s: '1"' }
+    ];
+
+    let best = null;
+    for (const m of MAP){
+      const d = Math.abs(x - m.mm);
+      if (d <= tol && (!best || d < best.d)){
+        best = { d, s: m.s };
+      }
+    }
+    return best ? best.s : null;
+  }
+
+  function _fmtDiam_(diamMm){
+    const frac = _diamFractionFromMm_(diamMm);
+    if (frac) return `Ø${frac}`;      // para texto bonito
+    const x = Number(diamMm);
+    if (!Number.isFinite(x)) return '—';
+    return `Ø${x.toFixed(2)} mm`;
+  }
+
+  function _fmtDiamCell_(diamMm){
+    const frac = _diamFractionFromMm_(diamMm);
+    if (frac) return `${frac}`;       // para celda (sin Ø, más limpio)
+    const x = Number(diamMm);
+    if (!Number.isFinite(x)) return '-';
+    return `${x.toFixed(2)} mm`;
+  }
+
+  // ==========================
+  // NUEVO: escribir en celdas por nombre (Sup_*, Inf_*)
+  // ==========================
+  async function writeNamedCells_(kv){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const missing = [];
+      const ranges = {};
+
+      for (const key of Object.keys(kv)){
+        const it = ctx.workbook.names.getItemOrNullObject(key);
+        it.load(["type"]);
+        ranges[key] = { it };
+      }
+      await ctx.sync();
+
+      for (const key of Object.keys(kv)){
+        const it = ranges[key].it;
+        if (!it || it.isNullObject){
+          missing.push(key);
+          ranges[key].rng = null;
+          continue;
+        }
+        const t = String(it.type || '').toLowerCase();
+        if (t !== 'range'){
+          missing.push(key);
+          ranges[key].rng = null;
+          continue;
+        }
+        const rng = it.getRange();
+        ranges[key].rng = rng;
+      }
+
+      if (missing.length){
+        throw new Error('Faltan nombres (o no son rangos): ' + missing.join(', '));
+      }
+
+      for (const key of Object.keys(kv)){
+        const rng = ranges[key].rng;
+        rng.values = [[kv[key]]];
+      }
+
+      await ctx.sync();
+    });
+  }
+
+  // Toma SOLO opción 1 de cada zona y rellena Sup_*/Inf_*
+  async function writeBarsToNamedCells_(barsData){
+    const sup = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
+    const inf = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
+
+    const sup_n1 = (sup && sup.n_1 != null) ? Number(sup.n_1) : '';
+    const sup_d1 = (sup && sup.diam_1_mm != null) ? _fmtDiamCell_(sup.diam_1_mm) : '-';
+    const sup_n2 = (sup && sup.n_2 != null && Number(sup.n_2) > 0) ? Number(sup.n_2) : '';
+    const sup_d2 = (sup && sup.diam_2_mm != null && Number(sup.n_2) > 0) ? _fmtDiamCell_(sup.diam_2_mm) : '-';
+
+    const inf_n1 = (inf && inf.n_1 != null) ? Number(inf.n_1) : '';
+    const inf_d1 = (inf && inf.diam_1_mm != null) ? _fmtDiamCell_(inf.diam_1_mm) : '-';
+    const inf_n2 = (inf && inf.n_2 != null && Number(inf.n_2) > 0) ? Number(inf.n_2) : '';
+    const inf_d2 = (inf && inf.diam_2_mm != null && Number(inf.n_2) > 0) ? _fmtDiamCell_(inf.diam_2_mm) : '-';
+
+    const kv = {
+      Sup_Diam_1: sup_d1,
+      Sup_n_1: sup_n1,
+      Sup_Diam_2: sup_d2,
+      Sup_n_2: sup_n2,
+
+      Inf_Diam_1: inf_d1,
+      Inf_n_1: inf_n1,
+      Inf_Diam_2: inf_d2,
+      Inf_n_2: inf_n2
+    };
+
+    await writeNamedCells_(kv);
+    log('Barras: celdas por nombre rellenadas (Opción 1 SUP/INF).');
+  }
+
+  // ==========================
+  // Render texto bonito (sin exc)
+  // ==========================
+  function _fmtOptionLine_(zona, opt){
+    if (!opt) return `${zona}: —`;
+    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
+    const d1 = _fmtDiam_(opt.diam_1_mm);
+    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : 0;
+    const d2 = (n2 > 0) ? _fmtDiam_(opt.diam_2_mm) : '';
+
+    if (n2 > 0){
+      return `${zona} Opción 1: ${n1} ${d1} + ${n2} ${d2}`;
+    }
+    return `${zona} Opción 1: ${n1} ${d1}`;
+  }
+
   async function ping_(){
     try{
       setBusy(true);
@@ -723,91 +864,6 @@
     }
   }
 
-  // ==========================================================
-  // ✅ FIX CLAVE: leer NamedItems sin "recurso no existe"
-  // - Soporta: nombre inexistente, nombre tipo Range, nombre tipo valor/constante.
-  // - Evita getRange() cuando no corresponde.
-  // ==========================================================
-  function _toNumberOrNull_(v){
-    if (v === null || typeof v === 'undefined') return null;
-    const s = String(v).replace(',', '.').trim();
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  async function readNamedNumbers_(names){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = {};
-
-      // 1) Obtener NamedItems sin lanzar error
-      for (const nm of names){
-        const it = ctx.workbook.names.getItemOrNullObject(nm);
-        it.load(["name","type","value"]);
-        items[nm] = it;
-      }
-      await ctx.sync();
-
-      // 2) Preparar lectura de rangos SOLO si type == Range
-      const rangeToLoad = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){
-          rangeToLoad[nm] = null;
-          continue;
-        }
-
-        // type suele venir como "Range", "String", "Double", etc.
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          try{
-            const rng = it.getRange();
-            rng.load(["values"]);
-            rangeToLoad[nm] = rng;
-          }catch(e){
-            // Si por alguna razón el Range no es resoluble
-            rangeToLoad[nm] = null;
-          }
-        }else{
-          rangeToLoad[nm] = null;
-        }
-      }
-      await ctx.sync();
-
-      // 3) Armar resultado numérico (Range -> values[0][0], no-Range -> value)
-      const res = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){
-          res[nm] = null;
-          continue;
-        }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          const rng = rangeToLoad[nm];
-          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          res[nm] = _toNumberOrNull_(v);
-        }else{
-          // value puede ser number/string/bool
-          res[nm] = _toNumberOrNull_(it.value);
-        }
-      }
-
-      return res;
-    });
-  }
-
-  function _makeReqId_(){
-    const a = Date.now().toString(36).slice(-6);
-    const b = Math.random().toString(36).slice(2, 6);
-    return `x${a}${b}`;
-  }
-
   async function execute_(){
     try{
       setBusy(true);
@@ -825,10 +881,7 @@
         if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
         payload.selectionText = selectionText;
       }else{
-        // ✅ Barras: requeridos As_req_neg, As_req_pos; opcional L_m
         const vals = await readNamedNumbers_(["As_req_neg", "As_req_pos", "L_m"]);
-
-        // ✅ FIX: no uses "!x" (falsy). Usa null-check.
         if (vals.As_req_neg == null || vals.As_req_pos == null){
           throw new Error('Faltan nombres en Excel: As_req_neg y/o As_req_pos (Administrador de nombres).');
         }
@@ -881,15 +934,33 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
+        // ✅ Barras: (1) armar texto bonito, (2) llenar celdas por nombre
         if (action === 'Barras'){
-          const summary = String(data.result || '').trim();
-          showOK(summary || '✅ Propuesta de barras generada.');
-
           const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
-          await writeBarsOutputToSheet_(barsData, summary);
+
+          const sup1 = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
+          const inf1 = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
+
+          const asNeg = (data && data.meta && data.meta.As_req_neg_cm2 != null) ? data.meta.As_req_neg_cm2 : null;
+          const asPos = (data && data.meta && data.meta.As_req_pos_cm2 != null) ? data.meta.As_req_pos_cm2 : null;
+
+          const lines = [];
+          lines.push('✅ Propuesta de arreglo de barras (1 opción por zona).');
+          if (asNeg != null) lines.push(`- Acero SUP (As_req_neg): ${Number(asNeg).toFixed(3)} cm²`);
+          if (asPos != null) lines.push(`- Acero INF (As_req_pos): ${Number(asPos).toFixed(3)} cm²`);
+          lines.push(_fmtOptionLine_('SUP', sup1));
+          lines.push(_fmtOptionLine_('INF', inf1));
+          lines.push('Nota: Esta es una propuesta de combinaciones de barras. No valida resistencia ni verifica separaciones mínimas.');
+
+          showOK(lines.join('\n'));
+
+          // ✅ llenar celdas por nombre (NO tocar celda activa)
+          await writeBarsToNamedCells_(barsData);
+
           return;
         }
 
+        // Otros modos: pegar resultado en celda activa (como antes)
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -986,11 +1057,11 @@
       'Listo.\n\n' +
       '1) Pega tu token\n' +
       '2) (Opcional) Selecciona celdas → “Usar selección actual”\n' +
-      '3) Muévete a la celda destino\n' +
-      '4) Ejecutar\n\n' +
+      '3) Ejecutar\n\n' +
       'Modo Barras:\n' +
       '- Deben existir nombres: As_req_neg, As_req_pos (y opcional L_m)\n' +
-      '- Ejecutar escribe resumen + tabla debajo de la celda activa.'
+      '- Deben existir celdas con nombre: Sup_Diam_1, Sup_n_1, Sup_Diam_2, Sup_n_2, Inf_Diam_1, Inf_n_1, Inf_Diam_2, Inf_n_2\n' +
+      '- Ejecutar llena esos nombres con la Opción 1.'
     );
     log('Office.onReady OK (host=' + host + ')');
   });
