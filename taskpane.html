@@ -1064,39 +1064,39 @@
 
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
+        
+      // CAMBIOS HECHOS POR MI
+   if (action === 'Barras'){
+  const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
+  if (!barsData){
+    showERR('Barras: el backend no devolvió "data".');
+    log('ERROR Barras: falta data en respuesta.');
+    return;
+  }
 
-        if (action === 'Barras'){
-          const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
-          if (!barsData){
-            showERR('Barras: el backend no devolvió "data".');
-            log('ERROR Barras: falta data en respuesta.');
-            return;
-          }
+  // ✅ si el backend no pudo proponer, viene data.error (según tu registro_seproincaia.gs)
+  if (barsData.error){
+    showERR('Barras: ' + String(barsData.error));
+    log('Barras ERROR (data.error): ' + String(barsData.error));
+    return;
+  }
 
-          const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-          const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
+  const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+  const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
 
-          const asNeg = (barsData.inputs && barsData.inputs.As_req_neg_cm2 != null) ? barsData.inputs.As_req_neg_cm2 : null;
-          const asPos = (barsData.inputs && barsData.inputs.As_req_pos_cm2 != null) ? barsData.inputs.As_req_pos_cm2 : null;
+  // ✅ si no hay opciones, muestra aviso y NO intentes escribir
+  if (!supOpts.length && !infOpts.length){
+    showERR('Barras: no se encontraron combinaciones factibles con los límites actuales (n_max por capa).');
+    log('Barras: options vacías. Revisa b, cover, estribo, sep_min o catálogo permitido.');
+    return;
+  }
 
-          const lines = [];
-          lines.push('✅ Propuesta de arreglo de barras (2 opciones por zona).');
-          if (asNeg != null) lines.push(`- Acero SUP (As_req_neg): ${Number(asNeg).toFixed(3)} cm²`);
-          if (asPos != null) lines.push(`- Acero INF (As_req_pos): ${Number(asPos).toFixed(3)} cm²`);
+  // (tu render de líneas se queda igual)
+  ...
+  await writeBarsToNamedCells2_(barsData);
+  return;
+}
 
-          lines.push(_fmtOptionLine_('SUP', 1, supOpts[0] || null));
-          lines.push(_fmtOptionLine_('SUP', 2, supOpts[1] || null));
-          lines.push(_fmtOptionLine_('INF', 1, infOpts[0] || null));
-          lines.push(_fmtOptionLine_('INF', 2, infOpts[1] || null));
-
-          // ✅ texto alineado al backend (sin inventar)
-          lines.push('Nota: Esta es una propuesta de combinaciones de barras. No valida resistencia ni verifica separaciones mínimas.');
-          showOK(lines.join('\n'));
-
-          // ✅ escribir Opción 1 + Opción 2 + As_prov_*
-          await writeBarsToNamedCells2_(barsData);
-          return;
-        }
 
         // Otros modos: pegar resultado en celda activa
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
