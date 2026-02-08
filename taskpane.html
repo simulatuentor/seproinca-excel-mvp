@@ -297,7 +297,7 @@
       <div class="label" style="margin-top:10px;">Selección (texto)</div>
       <textarea id="selectionText" placeholder="Aquí se cargará la selección actual..."></textarea>
       <div class="hint">
-        Para Analizar/Redactar/Revisar/Diseñar: usa la selección.
+        Para Analizar/Redactar/Revisar: usa la selección.
         <br>Para <b>Barras</b>: no necesitas selección (lee nombres en Excel).
       </div>
     </div>
@@ -310,7 +310,6 @@
         <option value="Analizar">Analizar — Explica y resume resultados</option>
         <option value="Redactar">Redactar — Genera texto técnico</option>
         <option value="Revisar">Revisar — Detecta errores e inconsistencias</option>
-        <option value="Diseñar">Diseñar — Propone soluciones constructivas</option>
         <option value="Barras">Propuesta de combinación de barras para As Requerido</option>
       </select>
 
@@ -678,44 +677,7 @@
   }
 
   // ==========================
-  // NUEVO: catálogo local mínimo (para n_max)
-  // ==========================
-  const DIAMS_MM = [9.53, 12.70, 15.88, 19.05, 22.22, 25.40, 35.81];
-
-  function _round_(x, dec){
-    const p = Math.pow(10, dec || 0);
-    return Math.round(Number(x)*p)/p;
-  }
-
-  function _buildNmaxMapFromGeom_(b_cm, rec_cm){
-    // Regla simple: una fila/capa.
-    // b_av = b - 2 rec
-    // s_min = max(2.5 cm, db)
-    // n_max = floor((b_av + s_min)/(db + s_min))
-    const out = {};
-    const b = Number(b_cm);
-    const r = Number(rec_cm);
-
-    if (!Number.isFinite(b) || b <= 0) return out;
-    if (!Number.isFinite(r) || r < 0) return out;
-
-    const b_av = b - 2*r;
-    if (!Number.isFinite(b_av) || b_av <= 0) return out;
-
-    for (const dmm of DIAMS_MM){
-      const db_cm = dmm/10.0;
-      const smin = Math.max(2.5, db_cm);
-      let n = Math.floor((b_av + smin) / (db_cm + smin));
-      if (!Number.isFinite(n)) n = 1;
-      n = Math.max(1, n);
-      n = Math.min(10, n); // clamp para evitar locuras
-      out[_round_(dmm,2)] = n;
-    }
-    return out;
-  }
-
-  // ==========================
-  // NUEVO: formateo de diámetros (mm -> fracción)
+  // mm -> fracción (texto)
   // ==========================
   function _diamFractionFromMm_(mm){
     const x = Number(mm);
@@ -729,7 +691,8 @@
       { mm: 12.70, s: '1/2"' },
       { mm: 15.88, s: '5/8"' },
       { mm: 19.05, s: '3/4"' },
-      { mm: 25.40, s: '1"' }
+      { mm: 25.40, s: '1"' },
+      { mm: 35.81, s: '1 3/8"' }
     ];
 
     let best = null;
@@ -759,7 +722,7 @@
   }
 
   // ==========================
-  // NUEVO: escribir en celdas por nombre
+  // Escribir en celdas por nombre
   // ==========================
   async function writeNamedCells_(kv){
     if (typeof Excel === 'undefined' || !Excel.run){
@@ -822,7 +785,6 @@
     return { n1, d1, n2, d2, As, exc };
   }
 
-  // Escribe opción 1 y 2 + As_prov_* por nombre
   async function writeBarsToNamedCells2_(barsData){
     const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
     const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
@@ -849,7 +811,7 @@
       Inf_Diam_2: i1.d2,
       Inf_n_2: i1.n2,
 
-      // Opción 2 (nombres nuevos)
+      // Opción 2
       Sup2_Diam_1: s2.d1,
       Sup2_n_1: s2.n1,
       Sup2_Diam_2: s2.d2,
@@ -885,6 +847,27 @@
       return `${zona} Opción ${idx}: ${n1} ${d1} + ${n2} ${d2} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
     }
     return `${zona} Opción ${idx}: ${n1} ${d1} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
+  }
+
+  // ==========================
+  // NUEVO: Lectura robusta de As y geometría (mm)
+  // ==========================
+  function _coalesce_(){
+    for (let i = 0; i < arguments.length; i++){
+      const v = arguments[i];
+      if (v !== null && typeof v !== 'undefined' && v !== '') return v;
+    }
+    return null;
+  }
+
+  function _cmToMm_(cm){
+    const x = Number(cm);
+    return Number.isFinite(x) ? x * 10.0 : null;
+  }
+
+  function _safeNum_(x){
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
   }
 
   async function ping_(){
@@ -955,40 +938,93 @@
         if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
         payload.selectionText = selectionText;
       }else{
-        // Leer As_req_neg / As_req_pos obligatorios
-        // Leer geometría (si existe): bsup, binf, rec. Fallback: b.
-        const vals = await readNamedNumbers_(["As_req_neg", "As_req_pos", "bsup", "binf", "rec", "b"]);
+        // ✅ Barras: YA NO calculamos n_max aquí. Solo enviamos As_req + geometría (si existe).
+        // Soportamos nombres antiguos (cm) y nuevos (mm) para no romper nada.
 
-        if (vals.As_req_neg == null || vals.As_req_pos == null){
-          throw new Error('Faltan nombres en Excel: As_req_neg y/o As_req_pos (Administrador de nombres).');
+        const vals = await readNamedNumbers_([
+          // As requeridos (preferencia: *_cm2; compat: As_req_neg / As_req_pos)
+          "As_req_neg_cm2", "As_req_pos_cm2",
+          "As_req_neg", "As_req_pos",
+          "As_req_sup", "As_req_inf",
+
+          // Anchos en mm (preferidos)
+          "b_sup_mm", "b_inf_mm",
+          "bw_sup_mm", "bw_inf_mm",
+          "ancho_sup_mm", "ancho_inf_mm",
+
+          // Anchos antiguos en cm (compat)
+          "bsup", "binf", "b",
+
+          // Recubrimiento / cover (mm preferido, compat cm)
+          "cover_mm", "rec_mm", "recubrimiento_mm",
+          "rec", "cover",
+
+          // Estribo y separación mínima (opcionales, mm)
+          "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
+          "sep_min_mm", "separacion_min_mm", "sep_min"
+        ]);
+
+        const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
+        const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
+
+        if (AsNeg == null || AsPos == null){
+          throw new Error(
+            'Faltan nombres en Excel para acero requerido.\n' +
+            'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
+            'o compat: As_req_neg y As_req_pos.'
+          );
         }
 
-        // Construir nmax desde geometría (cm)
-        let bSup = vals.bsup;
-        let bInf = vals.binf;
-        const rec = (vals.rec != null) ? vals.rec : null;
-        const bRect = vals.b;
+        // Anchos: preferir mm; si vienen en cm (bsup/binf/b) convertir a mm
+        let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
+        let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
 
-        // Fallbacks razonables si la hoja es rectangular
-        if (bSup == null && bRect != null) bSup = bRect;
-        if (bInf == null && bRect != null) bInf = bRect;
+        // Compat cm:
+        const bsup_cm = vals.bsup;
+        const binf_cm = vals.binf;
+        const b_cm    = vals.b;
 
-        const n_max_sup = (bSup != null && rec != null) ? _buildNmaxMapFromGeom_(bSup, rec) : {};
-        const n_max_inf = (bInf != null && rec != null) ? _buildNmaxMapFromGeom_(bInf, rec) : {};
+        if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
+        if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
 
-        // IMPORTANTE: por ahora NO mandamos L_m (lo reservamos para siguiente fase)
+        // Rectangular fallback (cm): b -> mm
+        if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
+        if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
+
+        // Recubrimiento: preferir mm; compat cm (rec/cover)
+        let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
+        const rec_cm = _coalesce_(vals.rec, vals.cover);
+        if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
+
+        // Opcionales
+        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
+        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
+
         payload = {
           kind: "fundamentos_barras_v1",
-          As_req_neg_cm2: vals.As_req_neg,
-          As_req_pos_cm2: vals.As_req_pos,
-          // L_m: null, // intencionalmente fuera por ahora
-          n_max_sup,
-          n_max_inf,
+          As_req_neg_cm2: Number(AsNeg),
+          As_req_pos_cm2: Number(AsPos),
+
+          // ✅ geometría (si existe)
+          b_sup_mm: _safeNum_(bSupMm),
+          b_inf_mm: _safeNum_(bInfMm),
+          cover_mm: _safeNum_(coverMm),
+          stirrup_diam_mm: _safeNum_(stirrupMm),
+          sep_min_mm: _safeNum_(sepMinMm),
+
           instruction,
           mode: currentMode
         };
 
-        log(`Geom→ n_max_sup=${JSON.stringify(n_max_sup)} | n_max_inf=${JSON.stringify(n_max_inf)}`);
+        log('Barras payload (geom): ' + JSON.stringify({
+          As_req_neg_cm2: payload.As_req_neg_cm2,
+          As_req_pos_cm2: payload.As_req_pos_cm2,
+          b_sup_mm: payload.b_sup_mm,
+          b_inf_mm: payload.b_inf_mm,
+          cover_mm: payload.cover_mm,
+          stirrup_diam_mm: payload.stirrup_diam_mm,
+          sep_min_mm: payload.sep_min_mm
+        }));
       }
 
       const request_id = _makeReqId_();
@@ -1053,7 +1089,8 @@
           lines.push(_fmtOptionLine_('INF', 1, infOpts[0] || null));
           lines.push(_fmtOptionLine_('INF', 2, infOpts[1] || null));
 
-          lines.push('Nota: Propuesta de combinaciones (catálogo cerrado). No valida resistencia ni verifica separaciones reales.');
+          // ✅ texto alineado al backend (sin inventar)
+          lines.push('Nota: Esta es una propuesta de combinaciones de barras. No valida resistencia ni verifica separaciones mínimas.');
           showOK(lines.join('\n'));
 
           // ✅ escribir Opción 1 + Opción 2 + As_prov_*
@@ -1160,9 +1197,13 @@
       '1) Pega tu token\n' +
       '2) (Opcional) Selecciona celdas → “Usar selección actual”\n' +
       '3) Ejecutar\n\n' +
-      'Modo Barras:\n' +
-      '- Deben existir nombres: As_req_neg, As_req_pos\n' +
-      '- (Opcional) geometría: bsup, binf, rec (o b + rec)\n' +
+      'Modo Barras (Fundamentos):\n' +
+      '- Deben existir nombres: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
+      '  (compat: As_req_neg / As_req_pos)\n' +
+      '- (Opcional) geometría para n_max automático:\n' +
+      '  b_sup_mm y b_inf_mm (recomendado)\n' +
+      '  (compat: bsup/binf/b en cm)\n' +
+      '- (Opcional) cover_mm, stirrup_diam_mm, sep_min_mm\n' +
       '- Deben existir celdas con nombre:\n' +
       '  Opción 1: Sup_Diam_1, Sup_n_1, Sup_Diam_2, Sup_n_2, Inf_Diam_1, Inf_n_1, Inf_Diam_2, Inf_n_2\n' +
       '  Opción 2: Sup2_Diam_1, Sup2_n_1, Sup2_Diam_2, Sup2_n_2, Inf2_Diam_1, Inf2_n_1, Inf2_Diam_2, Inf2_n_2\n' +
