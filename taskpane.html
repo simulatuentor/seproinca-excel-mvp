@@ -253,7 +253,6 @@
     </div>
     <div class="sub">Asistente Técnico Estructural</div>
     <div class="row" style="margin-top:10px; justify-content:space-between;">
-      <!-- FIX: no perder el puntito (no se usa textContent sobre el chip completo) -->
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
         <span id="hostText">host: ?</span>
@@ -679,6 +678,43 @@
   }
 
   // ==========================
+  // NUEVO: catálogo local mínimo (para n_max)
+  // ==========================
+  const DIAMS_MM = [9.53, 12.70, 15.88, 19.05, 22.22, 25.40, 35.81];
+
+  function _round_(x, dec){
+    const p = Math.pow(10, dec || 0);
+    return Math.round(Number(x)*p)/p;
+  }
+
+  function _buildNmaxMapFromGeom_(b_cm, rec_cm){
+    // Regla simple: una fila/capa.
+    // b_av = b - 2 rec
+    // s_min = max(2.5 cm, db)
+    // n_max = floor((b_av + s_min)/(db + s_min))
+    const out = {};
+    const b = Number(b_cm);
+    const r = Number(rec_cm);
+
+    if (!Number.isFinite(b) || b <= 0) return out;
+    if (!Number.isFinite(r) || r < 0) return out;
+
+    const b_av = b - 2*r;
+    if (!Number.isFinite(b_av) || b_av <= 0) return out;
+
+    for (const dmm of DIAMS_MM){
+      const db_cm = dmm/10.0;
+      const smin = Math.max(2.5, db_cm);
+      let n = Math.floor((b_av + smin) / (db_cm + smin));
+      if (!Number.isFinite(n)) n = 1;
+      n = Math.max(1, n);
+      n = Math.min(10, n); // clamp para evitar locuras
+      out[_round_(dmm,2)] = n;
+    }
+    return out;
+  }
+
+  // ==========================
   // NUEVO: formateo de diámetros (mm -> fracción)
   // ==========================
   function _diamFractionFromMm_(mm){
@@ -708,7 +744,7 @@
 
   function _fmtDiam_(diamMm){
     const frac = _diamFractionFromMm_(diamMm);
-    if (frac) return `Ø${frac}`;      // para texto bonito
+    if (frac) return `Ø${frac}`;
     const x = Number(diamMm);
     if (!Number.isFinite(x)) return '—';
     return `Ø${x.toFixed(2)} mm`;
@@ -716,14 +752,14 @@
 
   function _fmtDiamCell_(diamMm){
     const frac = _diamFractionFromMm_(diamMm);
-    if (frac) return `${frac}`;       // para celda (sin Ø, más limpio)
+    if (frac) return `${frac}`; // celda limpia
     const x = Number(diamMm);
     if (!Number.isFinite(x)) return '-';
     return `${x.toFixed(2)} mm`;
   }
 
   // ==========================
-  // NUEVO: escribir en celdas por nombre (Sup_*, Inf_*)
+  // NUEVO: escribir en celdas por nombre
   // ==========================
   async function writeNamedCells_(kv){
     if (typeof Excel === 'undefined' || !Excel.run){
@@ -771,51 +807,84 @@
     });
   }
 
-  // Toma SOLO opción 1 de cada zona y rellena Sup_*/Inf_*
-  async function writeBarsToNamedCells_(barsData){
-    const sup = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
-    const inf = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
+  function _optToCells_(opt){
+    if (!opt) {
+      return { n1:'', d1:'-', n2:'', d2:'-', As:'', exc:'' };
+    }
+    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
+    const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '-';
+    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
+    const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '-';
 
-    const sup_n1 = (sup && sup.n_1 != null) ? Number(sup.n_1) : '';
-    const sup_d1 = (sup && sup.diam_1_mm != null) ? _fmtDiamCell_(sup.diam_1_mm) : '-';
-    const sup_n2 = (sup && sup.n_2 != null && Number(sup.n_2) > 0) ? Number(sup.n_2) : '';
-    const sup_d2 = (sup && sup.diam_2_mm != null && Number(sup.n_2) > 0) ? _fmtDiamCell_(sup.diam_2_mm) : '-';
+    const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
+    const exc = (opt.excess_cm2 != null) ? Number(opt.excess_cm2) : '';
 
-    const inf_n1 = (inf && inf.n_1 != null) ? Number(inf.n_1) : '';
-    const inf_d1 = (inf && inf.diam_1_mm != null) ? _fmtDiamCell_(inf.diam_1_mm) : '-';
-    const inf_n2 = (inf && inf.n_2 != null && Number(inf.n_2) > 0) ? Number(inf.n_2) : '';
-    const inf_d2 = (inf && inf.diam_2_mm != null && Number(inf.n_2) > 0) ? _fmtDiamCell_(inf.diam_2_mm) : '-';
+    return { n1, d1, n2, d2, As, exc };
+  }
+
+  // Escribe opción 1 y 2 + As_prov_* por nombre
+  async function writeBarsToNamedCells2_(barsData){
+    const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+    const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
+
+    const sup1 = supOpts[0] || null;
+    const sup2 = supOpts[1] || null;
+    const inf1 = infOpts[0] || null;
+    const inf2 = infOpts[1] || null;
+
+    const s1 = _optToCells_(sup1);
+    const s2 = _optToCells_(sup2);
+    const i1 = _optToCells_(inf1);
+    const i2 = _optToCells_(inf2);
 
     const kv = {
-      Sup_Diam_1: sup_d1,
-      Sup_n_1: sup_n1,
-      Sup_Diam_2: sup_d2,
-      Sup_n_2: sup_n2,
+      // Opción 1
+      Sup_Diam_1: s1.d1,
+      Sup_n_1: s1.n1,
+      Sup_Diam_2: s1.d2,
+      Sup_n_2: s1.n2,
 
-      Inf_Diam_1: inf_d1,
-      Inf_n_1: inf_n1,
-      Inf_Diam_2: inf_d2,
-      Inf_n_2: inf_n2
+      Inf_Diam_1: i1.d1,
+      Inf_n_1: i1.n1,
+      Inf_Diam_2: i1.d2,
+      Inf_n_2: i1.n2,
+
+      // Opción 2 (nombres nuevos)
+      Sup2_Diam_1: s2.d1,
+      Sup2_n_1: s2.n1,
+      Sup2_Diam_2: s2.d2,
+      Sup2_n_2: s2.n2,
+
+      Inf2_Diam_1: i2.d1,
+      Inf2_n_1: i2.n1,
+      Inf2_Diam_2: i2.d2,
+      Inf2_n_2: i2.n2,
+
+      // As provistos (cm2)
+      As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
+      As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
+      As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
+      As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
     };
 
     await writeNamedCells_(kv);
-    log('Barras: celdas por nombre rellenadas (Opción 1 SUP/INF).');
+    log('Barras: celdas por nombre rellenadas (Opción 1 y 2 + As_prov_*).');
   }
 
   // ==========================
-  // Render texto bonito (sin exc)
+  // Render texto bonito
   // ==========================
-  function _fmtOptionLine_(zona, opt){
-    if (!opt) return `${zona}: —`;
+  function _fmtOptionLine_(zona, idx, opt){
+    if (!opt) return `${zona} Opción ${idx}: —`;
     const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
     const d1 = _fmtDiam_(opt.diam_1_mm);
     const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : 0;
     const d2 = (n2 > 0) ? _fmtDiam_(opt.diam_2_mm) : '';
 
     if (n2 > 0){
-      return `${zona} Opción 1: ${n1} ${d1} + ${n2} ${d2}`;
+      return `${zona} Opción ${idx}: ${n1} ${d1} + ${n2} ${d2} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
     }
-    return `${zona} Opción 1: ${n1} ${d1}`;
+    return `${zona} Opción ${idx}: ${n1} ${d1} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
   }
 
   async function ping_(){
@@ -886,19 +955,40 @@
         if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
         payload.selectionText = selectionText;
       }else{
-        const vals = await readNamedNumbers_(["As_req_neg", "As_req_pos", "L_m"]);
+        // Leer As_req_neg / As_req_pos obligatorios
+        // Leer geometría (si existe): bsup, binf, rec. Fallback: b.
+        const vals = await readNamedNumbers_(["As_req_neg", "As_req_pos", "bsup", "binf", "rec", "b"]);
+
         if (vals.As_req_neg == null || vals.As_req_pos == null){
           throw new Error('Faltan nombres en Excel: As_req_neg y/o As_req_pos (Administrador de nombres).');
         }
 
+        // Construir nmax desde geometría (cm)
+        let bSup = vals.bsup;
+        let bInf = vals.binf;
+        const rec = (vals.rec != null) ? vals.rec : null;
+        const bRect = vals.b;
+
+        // Fallbacks razonables si la hoja es rectangular
+        if (bSup == null && bRect != null) bSup = bRect;
+        if (bInf == null && bRect != null) bInf = bRect;
+
+        const n_max_sup = (bSup != null && rec != null) ? _buildNmaxMapFromGeom_(bSup, rec) : {};
+        const n_max_inf = (bInf != null && rec != null) ? _buildNmaxMapFromGeom_(bInf, rec) : {};
+
+        // IMPORTANTE: por ahora NO mandamos L_m (lo reservamos para siguiente fase)
         payload = {
           kind: "fundamentos_barras_v1",
           As_req_neg_cm2: vals.As_req_neg,
           As_req_pos_cm2: vals.As_req_pos,
-          L_m: (vals.L_m != null && vals.L_m > 0) ? vals.L_m : null,
+          // L_m: null, // intencionalmente fuera por ahora
+          n_max_sup,
+          n_max_inf,
           instruction,
           mode: currentMode
         };
+
+        log(`Geom→ n_max_sup=${JSON.stringify(n_max_sup)} | n_max_inf=${JSON.stringify(n_max_inf)}`);
       }
 
       const request_id = _makeReqId_();
@@ -939,8 +1029,6 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
-        // ✅ Barras: (1) armar texto bonito, (2) llenar celdas por nombre
-        // FIX: As_req_* viene en data.data.inputs, no en meta
         if (action === 'Barras'){
           const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
           if (!barsData){
@@ -949,31 +1037,31 @@
             return;
           }
 
-          const sup1 = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
-          const inf1 = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
+          const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+          const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
 
           const asNeg = (barsData.inputs && barsData.inputs.As_req_neg_cm2 != null) ? barsData.inputs.As_req_neg_cm2 : null;
           const asPos = (barsData.inputs && barsData.inputs.As_req_pos_cm2 != null) ? barsData.inputs.As_req_pos_cm2 : null;
-          const Lm    = (barsData.inputs && barsData.inputs.L_m != null) ? barsData.inputs.L_m : null;
 
           const lines = [];
-          lines.push('✅ Propuesta de arreglo de barras (1 opción por zona).');
+          lines.push('✅ Propuesta de arreglo de barras (2 opciones por zona).');
           if (asNeg != null) lines.push(`- Acero SUP (As_req_neg): ${Number(asNeg).toFixed(3)} cm²`);
           if (asPos != null) lines.push(`- Acero INF (As_req_pos): ${Number(asPos).toFixed(3)} cm²`);
-          if (Lm != null)    lines.push(`- Longitud L: ${Number(Lm).toFixed(3)} m`);
-          lines.push(_fmtOptionLine_('SUP', sup1));
-          lines.push(_fmtOptionLine_('INF', inf1));
-          lines.push('Nota: Esta es una propuesta de combinaciones de barras. No valida resistencia ni verifica separaciones mínimas.');
 
+          lines.push(_fmtOptionLine_('SUP', 1, supOpts[0] || null));
+          lines.push(_fmtOptionLine_('SUP', 2, supOpts[1] || null));
+          lines.push(_fmtOptionLine_('INF', 1, infOpts[0] || null));
+          lines.push(_fmtOptionLine_('INF', 2, infOpts[1] || null));
+
+          lines.push('Nota: Propuesta de combinaciones (catálogo cerrado). No valida resistencia ni verifica separaciones reales.');
           showOK(lines.join('\n'));
 
-          // ✅ llenar celdas por nombre (NO tocar celda activa)
-          await writeBarsToNamedCells_(barsData);
-
+          // ✅ escribir Opción 1 + Opción 2 + As_prov_*
+          await writeBarsToNamedCells2_(barsData);
           return;
         }
 
-        // Otros modos: pegar resultado en celda activa (como antes)
+        // Otros modos: pegar resultado en celda activa
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -1027,12 +1115,10 @@
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
-    // FIX: no borrar el span del punto: actualizamos SOLO el texto
     if (elHostText) elHostText.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
     elApiUrl.value = DEFAULT_API_URL;
-
     setLogVisible_(false);
 
     const last = await storageGet_('seproincaia.token.last');
@@ -1051,6 +1137,7 @@
     btnPing.addEventListener('click', ping_);
 
     btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
+    btnModeProd.classList.toggle('active', false);
     btnModeProd.addEventListener('click', () => setMode('Producción'));
 
     btnToggleLog.addEventListener('click', () => {
@@ -1074,9 +1161,13 @@
       '2) (Opcional) Selecciona celdas → “Usar selección actual”\n' +
       '3) Ejecutar\n\n' +
       'Modo Barras:\n' +
-      '- Deben existir nombres: As_req_neg, As_req_pos (y opcional L_m)\n' +
-      '- Deben existir celdas con nombre: Sup_Diam_1, Sup_n_1, Sup_Diam_2, Sup_n_2, Inf_Diam_1, Inf_n_1, Inf_Diam_2, Inf_n_2\n' +
-      '- Ejecutar llena esos nombres con la Opción 1.'
+      '- Deben existir nombres: As_req_neg, As_req_pos\n' +
+      '- (Opcional) geometría: bsup, binf, rec (o b + rec)\n' +
+      '- Deben existir celdas con nombre:\n' +
+      '  Opción 1: Sup_Diam_1, Sup_n_1, Sup_Diam_2, Sup_n_2, Inf_Diam_1, Inf_n_1, Inf_Diam_2, Inf_n_2\n' +
+      '  Opción 2: Sup2_Diam_1, Sup2_n_1, Sup2_Diam_2, Sup2_n_2, Inf2_Diam_1, Inf2_n_1, Inf2_Diam_2, Inf2_n_2\n' +
+      '  As prov: As_prov_sup1, As_prov_sup2, As_prov_inf1, As_prov_inf2\n' +
+      '- Ejecutar llena esos nombres con 2 opciones por zona.'
     );
     log('Office.onReady OK (host=' + host + ')');
   });
