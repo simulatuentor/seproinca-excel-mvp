@@ -253,11 +253,15 @@
     </div>
     <div class="sub">Asistente Técnico Estructural</div>
     <div class="row" style="margin-top:10px; justify-content:space-between;">
-      <div class="chip" id="hostChip"><span class="dot" id="hostDot"></span> host: ?</div>
+      <!-- FIX: no perder el puntito (no se usa textContent sobre el chip completo) -->
+      <div class="chip" id="hostChip">
+        <span class="dot" id="hostDot"></span>
+        <span id="hostText">host: ?</span>
+      </div>
 
       <div class="chip" id="tokenStateChip">
         <span class="dot neutral" id="stateDot"></span>
-        <span id="stateText">Estado: listo para ejecutar</span>
+        <span id="stateText">Estado: a la espera de petición</span>
       </div>
     </div>
   </div>
@@ -350,6 +354,7 @@
 
   const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
+  const elHostText = $('#hostText');
 
   const elToken = $('#token');
   const elApiUrl = $('#apiUrl');
@@ -526,7 +531,7 @@
     elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
 
     if (s === 'neutral'){
-      elStateText.textContent = 'Estado: listo para ejecutar';
+      elStateText.textContent = 'Estado: a la espera de petición';
       return;
     }
 
@@ -935,19 +940,27 @@
         setState_('active', uses);
 
         // ✅ Barras: (1) armar texto bonito, (2) llenar celdas por nombre
+        // FIX: As_req_* viene en data.data.inputs, no en meta
         if (action === 'Barras'){
           const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
+          if (!barsData){
+            showERR('Barras: el backend no devolvió "data".');
+            log('ERROR Barras: falta data en respuesta.');
+            return;
+          }
 
-          const sup1 = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
-          const inf1 = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
+          const sup1 = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options[0] : null;
+          const inf1 = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options[0] : null;
 
-          const asNeg = (data && data.meta && data.meta.As_req_neg_cm2 != null) ? data.meta.As_req_neg_cm2 : null;
-          const asPos = (data && data.meta && data.meta.As_req_pos_cm2 != null) ? data.meta.As_req_pos_cm2 : null;
+          const asNeg = (barsData.inputs && barsData.inputs.As_req_neg_cm2 != null) ? barsData.inputs.As_req_neg_cm2 : null;
+          const asPos = (barsData.inputs && barsData.inputs.As_req_pos_cm2 != null) ? barsData.inputs.As_req_pos_cm2 : null;
+          const Lm    = (barsData.inputs && barsData.inputs.L_m != null) ? barsData.inputs.L_m : null;
 
           const lines = [];
           lines.push('✅ Propuesta de arreglo de barras (1 opción por zona).');
           if (asNeg != null) lines.push(`- Acero SUP (As_req_neg): ${Number(asNeg).toFixed(3)} cm²`);
           if (asPos != null) lines.push(`- Acero INF (As_req_pos): ${Number(asPos).toFixed(3)} cm²`);
+          if (Lm != null)    lines.push(`- Longitud L: ${Number(Lm).toFixed(3)} m`);
           lines.push(_fmtOptionLine_('SUP', sup1));
           lines.push(_fmtOptionLine_('INF', inf1));
           lines.push('Nota: Esta es una propuesta de combinaciones de barras. No valida resistencia ni verifica separaciones mínimas.');
@@ -1013,7 +1026,9 @@
 
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
-    elHostChip.textContent = 'host: ' + host;
+
+    // FIX: no borrar el span del punto: actualizamos SOLO el texto
+    if (elHostText) elHostText.textContent = 'host: ' + host;
     elHostDot.className = 'dot green';
 
     elApiUrl.value = DEFAULT_API_URL;
