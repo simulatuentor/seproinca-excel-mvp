@@ -1092,7 +1092,7 @@
         // ====================================================
         // SUB-BLOQUE: Barras (escritura por nombres)
         // ====================================================
-       if (action === 'Barras'){
+     if (action === 'Barras'){
   const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
   if (!barsData){
     showERR('Barras: el backend no devolvió "data".');
@@ -1100,31 +1100,37 @@
     return;
   }
 
-  // si el backend no pudo proponer, viene data.error
-  if (barsData.error){
-    showERR('Barras: ' + String(barsData.error));
-    log('Barras ERROR (data.error): ' + String(barsData.error));
+  // ✅ soporta 2 estructuras:
+  // A) barsData = { ok, summary_text, data:{sup,inf,...} }
+  // B) barsData = { sup, inf, ... }
+  const model = (barsData.ok && barsData.data && typeof barsData.data === 'object')
+    ? barsData.data
+    : barsData;
+
+  // error interno del modelo
+  if (model && model.error){
+    showERR('Barras: ' + String(model.error));
+    log('Barras ERROR (model.error): ' + String(model.error));
     return;
   }
 
-  const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-  const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
+  const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
+  const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
 
   if (!supOpts.length && !infOpts.length){
-    const msg = 'Barras: no se encontraron combinaciones factibles con los límites actuales.';
-    showERR(msg);
+    showERR('Barras: no se encontraron combinaciones factibles con los límites actuales.');
     log('Barras: options vacías.');
-    // 👇 igual muestra lo que mande el backend si existe
-    if (barsData.summary_text) showERR(msg + '\n\n' + String(barsData.summary_text));
     return;
   }
 
-  // 👇 AHORA SÍ: actualiza panel Resultado con el resumen real del backend
-  showOK(String(barsData.summary_text || 'Barras OK.'));
+  // ✅ summary: preferir summary_text si existe; si no, usar data.result
+  const summary = String(barsData.summary_text || data.result || 'Barras OK.');
+  showOK(summary);
 
-  await writeBarsToNamedCells2_(barsData);
+  await writeBarsToNamedCells2_(model);
   return;
 }
+
 
 
         // ====================================================
