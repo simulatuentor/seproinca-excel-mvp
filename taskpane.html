@@ -1128,52 +1128,77 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
-        // ====================================================
-        // SUB-BLOQUE: Barras (escritura por nombres)
-        // ====================================================
-        if (action === 'Barras'){
-          const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
-          if (!barsEnvelope){
-            showERR('Barras: el backend no devolvió "data".');
-            log('ERROR Barras: falta data en respuesta.');
-            return;
-          }
+// ====================================================
+// SUB-BLOQUE: Barras (escritura por nombres)
+// ====================================================
+if (action === 'Barras'){
+  const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
+  if (!barsEnvelope){
+    showERR('Barras: el backend no devolvió "data".');
+    log('ERROR Barras: falta data en respuesta.');
+    return;
+  }
 
-          // ✅ soporta 2 estructuras:
-          // A) barsEnvelope = { ok, summary_text, data:{sup,inf,...} }
-          // B) barsEnvelope = { sup, inf, ... }
-          const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
-            ? barsEnvelope.data
-            : barsEnvelope;
+  // ✅ soporta 2 estructuras:
+  // A) barsEnvelope = { ok, summary_text, data:{sup,inf,...} }
+  // B) barsEnvelope = { sup, inf, ... }
+  const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
+    ? barsEnvelope.data
+    : barsEnvelope;
 
-          // error interno del modelo
-          if (model && model.error){
-            showERR('Barras: ' + String(model.error));
-            log('Barras ERROR (model.error): ' + String(model.error));
-            return;
-          }
+  // error interno del modelo
+  if (model && model.error){
+    showERR('Barras: ' + String(model.error));
+    log('Barras ERROR (model.error): ' + String(model.error));
+    return;
+  }
 
-          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
-          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
+  const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
+  const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
 
-          if (!supOpts.length && !infOpts.length){
-            // Si el backend dejó una nota/diagnóstico, muéstralo.
-            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
-            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
-            const extra = [noteSup ? ('SUP: ' + noteSup) : '', noteInf ? ('INF: ' + noteInf) : ''].filter(Boolean).join('\n\n');
-            showERR('Barras: no se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
-            log('Barras: options vacías.');
-            return;
-          }
+  // ====================================================
+  // ✅ CASO CRÍTICO: NO HAY OPCIONES NI EN SUP NI EN INF
+  // ====================================================
+  if (!supOpts.length && !infOpts.length){
 
-          // ✅ Mostrar SIEMPRE el summary_text real (evita el “Barras OK.”)
-          const summary = _extractBarsSummary_(data, barsEnvelope);
-          showOK(String(summary || '').trim() || 'Barras OK.');
+    // 🔑 CLAVE: escribir igual → esto limpia TODAS las celdas
+    try{
+      await writeBarsToNamedCells2_(model);
+      log('Barras: celdas limpiadas (sin opciones en SUP e INF).');
+    }catch(e){
+      log('WARN Barras: no se pudieron limpiar celdas: ' + (e.message || e));
+    }
 
-          // ✅ Escribir SIEMPRE (esto limpia celdas de la zona sin opciones)
-          await writeBarsToNamedCells2_(model);
-          return;
-        }
+    // Construir mensaje detallado si existe
+    const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
+    const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
+    const extra = [
+      noteSup ? ('SUP:\n' + noteSup) : '',
+      noteInf ? ('INF:\n' + noteInf) : ''
+    ].filter(Boolean).join('\n\n');
+
+    showERR(
+      'Barras: no se encontraron combinaciones factibles con los límites actuales.' +
+      (extra ? '\n\n' + extra : '')
+    );
+
+    log('Barras: options vacías en ambas zonas.');
+    return;
+  }
+
+  // ====================================================
+  // CASOS NORMALES (SUP o INF sí tiene opciones)
+  // ====================================================
+
+  // ✅ Mostrar SIEMPRE el summary_text real (evita el “Barras OK.”)
+  const summary = _extractBarsSummary_(data, barsEnvelope);
+  showOK(String(summary || '').trim() || 'Barras OK.');
+
+  // ✅ Escribir SIEMPRE (esto limpia la zona que no tenga opciones)
+  await writeBarsToNamedCells2_(model);
+  return;
+}
+
 
         // ====================================================
         // SUB-BLOQUE: Otros modos (pegar resultado)
