@@ -1228,20 +1228,6 @@ async function execute_(){
         return;
       }
 
-      // ... (resto de tus otros modos)
-    }
-
-  }catch(e){
-    showERR(e.message || String(e));
-    log('ERROR: ' + (e.message || e));
-    setState_('neutral');
-  }finally{
-    setBusy(false);
-  }
-}
-
-
-
         // ====================================================
         // SUB-BLOQUE: Otros modos (pegar resultado)
         // ====================================================
