@@ -655,7 +655,7 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-  // ----------------------------
+ // ----------------------------
 // 8.5 — Barras helpers (leer nombres / formateo / write names)
 // ----------------------------
 function _toNumberOrNull_(v){
@@ -1046,9 +1046,6 @@ function _extractBarsSummary_(topLevelData, barsEnvelope){
 }
 
 async function execute_(){
-  // ✅ bandera para poder limpiar incluso si algo revienta
-  let _isBarras = false;
-
   try{
     setBusy(true);
 
@@ -1056,8 +1053,6 @@ async function execute_(){
     await storageSet_('seproincaia.token.last', token);
 
     const action = elAction.value || 'Analizar';
-    _isBarras = (action === 'Barras');
-
     const instruction = (elInstr.value || '').trim();
 
     let payload = { selectionText: '', instruction, mode: currentMode };
@@ -1089,8 +1084,6 @@ async function execute_(){
       const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
 
       if (AsNeg == null || AsPos == null){
-        // ✅ si es Barras y faltan nombres, limpiamos para no dejar basura vieja
-        try{ await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} }); }catch(_e){}
         throw new Error(
           'Faltan nombres en Excel para acero requerido.\n' +
           'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
@@ -1166,11 +1159,7 @@ async function execute_(){
       body: JSON.stringify(bodyObj)
     }, API_TIMEOUT_MS_POST);
 
-    // ✅ ERROR DE RED: si era Barras, limpiar para no dejar residuos
     if (!out.ok && out.error){
-      if (_isBarras){
-        try{ await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} }); }catch(_e){}
-      }
       const msg = 'No se pudo conectar. ' + out.error;
       showERR(msg);
       log('ERROR red: ' + out.error);
@@ -1180,7 +1169,6 @@ async function execute_(){
 
     const data = out.data;
 
-    // ✅ BACKEND OK
     if (data && data.ok){
       log('OK: respuesta recibida');
 
@@ -1190,12 +1178,9 @@ async function execute_(){
       // ====================================================
       // SUB-BLOQUE: Barras (escritura por nombres)
       // ====================================================
-      if (_isBarras){
+      if (action === 'Barras'){
         const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
-
-        // si no viene data, igualmente limpia
         if (!barsEnvelope){
-          try{ await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} }); }catch(_e){}
           showERR('Barras: el backend no devolvió "data".');
           log('ERROR Barras: falta data en respuesta.');
           return;
@@ -1206,8 +1191,6 @@ async function execute_(){
           : barsEnvelope;
 
         if (model && model.error){
-          // ✅ si el modelo dice error, limpiar
-          try{ await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} }); }catch(_e){}
           showERR('Barras: ' + String(model.error));
           log('Barras ERROR (model.error): ' + String(model.error));
           return;
@@ -1216,16 +1199,12 @@ async function execute_(){
         const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
         const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
 
-        // ✅ CASO CRÍTICO: NO HAY OPCIONES EN SUP NI EN INF
+        // ✅ CASO CRÍTICO: NO HAY OPCIONES EN SUP NI EN INF → LIMPIAR TODO SIEMPRE
         if (!supOpts.length && !infOpts.length){
-
-          // 🔑 AQUÍ ESTABA TU BUG: NO LLAMAR clearBarsNamedCells_ (no existe)
-          // ✅ Limpieza usando el canal que ya funciona:
           try{
-            await writeBarsToNamedCells2_(model); // model trae sup/inf vacíos → limpia todo
-            log('Barras: celdas limpiadas (sin opciones en SUP e INF).');
+            await clearBarsNamedCells_();
           }catch(e){
-            log('WARN Barras: no se pudieron limpiar celdas: ' + (e.message || e));
+            log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e));
           }
 
           const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
@@ -1235,11 +1214,8 @@ async function execute_(){
             noteInf ? ('INF:\n' + noteInf) : ''
           ].filter(Boolean).join('\n\n');
 
-          showERR(
-            'Barras: No se encontraron combinaciones factibles con los límites actuales.' +
-            (extra ? '\n\n' + extra : '')
-          );
-          log('Barras: options vacías en ambas zonas.');
+          showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
+          log('Barras: options vacías en ambas zonas → se limpió Excel.');
           return;
         }
 
@@ -1247,40 +1223,15 @@ async function execute_(){
         const summary = _extractBarsSummary_(data, barsEnvelope);
         showOK(String(summary || '').trim() || 'Barras OK.');
 
-        // ✅ SIEMPRE escribir (limpia zona faltante si aplica)
+        // ✅ SIEMPRE escribir/limpiar lo que corresponda
         await writeBarsToNamedCells2_(model);
         return;
       }
 
       // ... (resto de tus otros modos)
-      // Aquí debería seguir tu código original de Analizar/Redactar/Revisar
-
-      return;
-    }
-
-    // ✅ BACKEND NO-OK
-    {
-      // si el backend devolvió error y era Barras, limpiamos igual
-      if (_isBarras){
-        try{ await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} }); }catch(_e){}
-      }
-      const f = _formatBackendError_(data, out.raw);
-      showERR(f.userMsg);
-      log('ERROR backend: ' + f.techMsg);
-
-      const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-      setState_('invalid', usesErr);
-      return;
     }
 
   }catch(e){
-    // ✅ CUALQUIER EXCEPCIÓN: si era Barras, limpiar
-    try{
-      if (_isBarras){
-        await writeBarsToNamedCells2_({ sup:{options:[]}, inf:{options:[]} });
-      }
-    }catch(_e){}
-
     showERR(e.message || String(e));
     log('ERROR: ' + (e.message || e));
     setState_('neutral');
