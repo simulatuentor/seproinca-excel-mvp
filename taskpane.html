@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="es">
 <head>
+  <!-- =========================================================
+       BLOQUE 1/8 — HEAD / META / OFFICE.JS
+       ========================================================= -->
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -8,6 +11,9 @@
 
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
+  <!-- =========================================================
+       BLOQUE 2/8 — CSS (UI / THEME)
+       ========================================================= -->
   <style>
     :root{
       --blue1:#1f4f86;
@@ -246,6 +252,9 @@
 </head>
 
 <body>
+  <!-- =========================================================
+       BLOQUE 3/8 — HTML UI (HEADER / ESTADO)
+       ========================================================= -->
   <div class="header">
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
@@ -266,6 +275,9 @@
   </div>
 
   <div class="wrap">
+    <!-- =========================================================
+         BLOQUE 4/8 — HTML UI (TOKEN / MODO)
+         ========================================================= -->
     <div class="card">
       <div class="modeRow">
         <div style="font-weight:900;">Modo</div>
@@ -282,6 +294,9 @@
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
+    <!-- =========================================================
+         BLOQUE 5/8 — HTML UI (SELECCIÓN)
+         ========================================================= -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Rango seleccionado</div>
 
@@ -302,6 +317,9 @@
       </div>
     </div>
 
+    <!-- =========================================================
+         BLOQUE 6/8 — HTML UI (ACCIÓN / EJECUTAR)
+         ========================================================= -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">¿Qué quieres hacer?</div>
 
@@ -325,6 +343,9 @@
       </div>
     </div>
 
+    <!-- =========================================================
+         BLOQUE 7/8 — HTML UI (RESULTADO / LOG)
+         ========================================================= -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
       <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
@@ -346,10 +367,24 @@
     </div>
   </div>
 
+  <!-- =========================================================
+       BLOQUE 8/8 — JAVASCRIPT (APP)
+       Sub-bloques internos:
+         8.1 DOM refs / config
+         8.2 storage / logging / UI helpers
+         8.3 Excel adapters (read selection, read/write names, paste cell)
+         8.4 HTTP client (_fetchJson_)
+         8.5 Barras helpers (format/pack to named cells)
+         8.6 execute_ / ping_ / useSelection_
+         8.7 Office.onReady wiring
+       ========================================================= -->
 <script>
 (function(){
   const $ = (s) => document.querySelector(s);
 
+  // ----------------------------
+  // 8.1 — DOM refs / config
+  // ----------------------------
   const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
   const elHostText = $('#hostText');
@@ -385,6 +420,9 @@
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
 
+  // ----------------------------
+  // 8.2 — storage / logging / UI helpers
+  // ----------------------------
   function storageAvailable_(){
     try{
       return (typeof Office !== 'undefined'
@@ -459,6 +497,9 @@
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
+  // ----------------------------
+  // 8.3 — Excel adapters
+  // ----------------------------
   async function readSelectionExcel_(){
     if (typeof Excel === 'undefined' || !Excel.run){
       throw new Error('Excel API no disponible en este host.');
@@ -543,6 +584,9 @@
     return `x${a}${b}`;
   }
 
+  // ----------------------------
+  // 8.4 — HTTP client (_fetchJson_)
+  // ----------------------------
   function _tryParseJson_(txt){
     const t = String(txt || '').trim();
     if (!t) return null;
@@ -611,9 +655,9 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-  // ==========================
-  // FIX: leer nombres (Range o valor)
-  // ==========================
+  // ----------------------------
+  // 8.5 — Barras helpers (leer nombres / formateo / write names)
+  // ----------------------------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
     const s = String(v).replace(',', '.').trim();
@@ -676,9 +720,6 @@
     });
   }
 
-  // ==========================
-  // mm -> fracción (texto)
-  // ==========================
   function _diamFractionFromMm_(mm){
     const x = Number(mm);
     if (!Number.isFinite(x)) return null;
@@ -721,9 +762,6 @@
     return `${x.toFixed(2)} mm`;
   }
 
-  // ==========================
-  // Escribir en celdas por nombre
-  // ==========================
   async function writeNamedCells_(kv){
     if (typeof Excel === 'undefined' || !Excel.run){
       throw new Error('Excel API no disponible en este host.');
@@ -833,9 +871,6 @@
     log('Barras: celdas por nombre rellenadas (Opción 1 y 2 + As_prov_*).');
   }
 
-  // ==========================
-  // Render texto bonito
-  // ==========================
   function _fmtOptionLine_(zona, idx, opt){
     if (!opt) return `${zona} Opción ${idx}: —`;
     const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
@@ -849,9 +884,9 @@
     return `${zona} Opción ${idx}: ${n1} ${d1} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
   }
 
-  // ==========================
-  // NUEVO: Lectura robusta de As y geometría (mm)
-  // ==========================
+  // ----------------------------
+  // 8.6 — Barras: lectura robusta de As y geometría (mm)
+  // ----------------------------
   function _coalesce_(){
     for (let i = 0; i < arguments.length; i++){
       const v = arguments[i];
@@ -870,6 +905,9 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  // ----------------------------
+  // 8.6 — ping_ / execute_ / useSelection_
+  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -938,28 +976,20 @@
         if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
         payload.selectionText = selectionText;
       }else{
-        // ✅ Barras: YA NO calculamos n_max aquí. Solo enviamos As_req + geometría (si existe).
-        // Soportamos nombres antiguos (cm) y nuevos (mm) para no romper nada.
-
         const vals = await readNamedNumbers_([
-          // As requeridos (preferencia: *_cm2; compat: As_req_neg / As_req_pos)
           "As_req_neg_cm2", "As_req_pos_cm2",
           "As_req_neg", "As_req_pos",
           "As_req_sup", "As_req_inf",
 
-          // Anchos en mm (preferidos)
           "b_sup_mm", "b_inf_mm",
           "bw_sup_mm", "bw_inf_mm",
           "ancho_sup_mm", "ancho_inf_mm",
 
-          // Anchos antiguos en cm (compat)
           "bsup", "binf", "b",
 
-          // Recubrimiento / cover (mm preferido, compat cm)
           "cover_mm", "rec_mm", "recubrimiento_mm",
           "rec", "cover",
 
-          // Estribo y separación mínima (opcionales, mm)
           "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
           "sep_min_mm", "separacion_min_mm", "sep_min"
         ]);
@@ -975,11 +1005,9 @@
           );
         }
 
-        // Anchos: preferir mm; si vienen en cm (bsup/binf/b) convertir a mm
         let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
         let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
 
-        // Compat cm:
         const bsup_cm = vals.bsup;
         const binf_cm = vals.binf;
         const b_cm    = vals.b;
@@ -987,16 +1015,13 @@
         if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
         if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
 
-        // Rectangular fallback (cm): b -> mm
         if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
         if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
 
-        // Recubrimiento: preferir mm; compat cm (rec/cover)
         let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
         const rec_cm = _coalesce_(vals.rec, vals.cover);
         if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
 
-        // Opcionales
         const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
         const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
 
@@ -1005,7 +1030,6 @@
           As_req_neg_cm2: Number(AsNeg),
           As_req_pos_cm2: Number(AsPos),
 
-          // ✅ geometría (si existe)
           b_sup_mm: _safeNum_(bSupMm),
           b_inf_mm: _safeNum_(bInfMm),
           cover_mm: _safeNum_(coverMm),
@@ -1064,40 +1088,40 @@
 
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
-        
-      // CAMBIOS HECHOS POR MI
-   if (action === 'Barras'){
-  const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
-  if (!barsData){
-    showERR('Barras: el backend no devolvió "data".');
-    log('ERROR Barras: falta data en respuesta.');
-    return;
-  }
 
-  // ✅ si el backend no pudo proponer, viene data.error (según tu registro_seproincaia.gs)
-  if (barsData.error){
-    showERR('Barras: ' + String(barsData.error));
-    log('Barras ERROR (data.error): ' + String(barsData.error));
-    return;
-  }
+        // ====================================================
+        // SUB-BLOQUE: Barras (escritura por nombres)
+        // ====================================================
+        if (action === 'Barras'){
+          const barsData = (data.data && typeof data.data === 'object') ? data.data : null;
+          if (!barsData){
+            showERR('Barras: el backend no devolvió "data".');
+            log('ERROR Barras: falta data en respuesta.');
+            return;
+          }
 
-  const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-  const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
+          if (barsData.error){
+            showERR('Barras: ' + String(barsData.error));
+            log('Barras ERROR (data.error): ' + String(barsData.error));
+            return;
+          }
 
-  // ✅ si no hay opciones, muestra aviso y NO intentes escribir
-  if (!supOpts.length && !infOpts.length){
-    showERR('Barras: no se encontraron combinaciones factibles con los límites actuales (n_max por capa).');
-    log('Barras: options vacías. Revisa b, cover, estribo, sep_min o catálogo permitido.');
-    return;
-  }
+          const supOpts = (barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+          const infOpts = (barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
 
-  // (tu render de líneas se queda igual)
-  await writeBarsToNamedCells2_(barsData);
-  return;
-}
+          if (!supOpts.length && !infOpts.length){
+            showERR('Barras: no se encontraron combinaciones factibles con los límites actuales (n_max por capa).');
+            log('Barras: options vacías. Revisa b, cover, estribo, sep_min o catálogo permitido.');
+            return;
+          }
 
+          await writeBarsToNamedCells2_(barsData);
+          return;
+        }
 
-        // Otros modos: pegar resultado en celda activa
+        // ====================================================
+        // SUB-BLOQUE: Otros modos (pegar resultado)
+        // ====================================================
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -1148,6 +1172,9 @@
     }
   }
 
+  // ----------------------------
+  // 8.7 — Office.onReady wiring
+  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
