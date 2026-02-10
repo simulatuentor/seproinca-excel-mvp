@@ -1065,10 +1065,19 @@
             : barsEnvelope;
 
           if (model && model.error){
-            showERR('Barras: ' + String(model.error));
-            log('Barras ERROR (model.error): ' + String(model.error));
-            return;
-          }
+  // ✅ LIMPIAR SIEMPRE si el modelo viene con error (caso típico: sin combinaciones)
+  try{
+    await clearBarsNamedCells_();
+    log('Barras: limpieza aplicada por model.error (sin combinaciones).');
+  }catch(e){
+    log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e));
+  }
+
+  showERR('Barras: ' + String(model.error));
+  log('Barras ERROR (model.error): ' + String(model.error));
+  return;
+}
+
 
           const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
           const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
