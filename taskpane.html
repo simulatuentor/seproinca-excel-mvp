@@ -367,24 +367,10 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       BLOQUE 8/8 — JAVASCRIPT (APP)
-       Sub-bloques internos:
-         8.1 DOM refs / config
-         8.2 storage / logging / UI helpers
-         8.3 Excel adapters (read selection, read/write names, paste cell)
-         8.4 HTTP client (_fetchJson_)
-         8.5 Barras helpers (format/pack to named cells)
-         8.6 execute_ / ping_ / useSelection_
-         8.7 Office.onReady wiring
-       ========================================================= -->
 <script>
 (function(){
   const $ = (s) => document.querySelector(s);
 
-  // ----------------------------
-  // 8.1 — DOM refs / config
-  // ----------------------------
   const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
   const elHostText = $('#hostText');
@@ -420,9 +406,6 @@
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
 
-  // ----------------------------
-  // 8.2 — storage / logging / UI helpers
-  // ----------------------------
   function storageAvailable_(){
     try{
       return (typeof Office !== 'undefined'
@@ -497,9 +480,6 @@
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
-  // ----------------------------
-  // 8.3 — Excel adapters
-  // ----------------------------
   async function readSelectionExcel_(){
     if (typeof Excel === 'undefined' || !Excel.run){
       throw new Error('Excel API no disponible en este host.');
@@ -584,9 +564,6 @@
     return `x${a}${b}`;
   }
 
-  // ----------------------------
-  // 8.4 — HTTP client (_fetchJson_)
-  // ----------------------------
   function _tryParseJson_(txt){
     const t = String(txt || '').trim();
     if (!t) return null;
@@ -655,582 +632,468 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
- // ----------------------------
-// 8.5 — Barras helpers (leer nombres / formateo / write names)
-// ----------------------------
-function _toNumberOrNull_(v){
-  if (v === null || typeof v === 'undefined') return null;
-  const s = String(v).replace(',', '.').trim();
-  if (!s) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
-
-async function readNamedNumbers_(names){
-  if (typeof Excel === 'undefined' || !Excel.run){
-    throw new Error('Excel API no disponible en este host.');
+  // ----------------------------
+  // 8.5 — Barras helpers
+  // ----------------------------
+  function _toNumberOrNull_(v){
+    if (v === null || typeof v === 'undefined') return null;
+    const s = String(v).replace(',', '.').trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
   }
 
-  return await Excel.run(async (ctx) => {
-    const items = {};
-
-    for (const nm of names){
-      const it = ctx.workbook.names.getItemOrNullObject(nm);
-      it.load(["name","type","value"]);
-      items[nm] = it;
+  async function readNamedNumbers_(names){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
     }
-    await ctx.sync();
 
-    const rangeToLoad = {};
-    for (const nm of names){
-      const it = items[nm];
-      if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+    return await Excel.run(async (ctx) => {
+      const items = {};
 
-      const t = String(it.type || '').toLowerCase();
-      if (t === 'range'){
-        try{
-          const rng = it.getRange();
-          rng.load(["values"]);
-          rangeToLoad[nm] = rng;
-        }catch(e){
+      for (const nm of names){
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            rangeToLoad[nm] = null;
+          }
+        }else{
           rangeToLoad[nm] = null;
         }
-      }else{
-        rangeToLoad[nm] = null;
       }
-    }
-    await ctx.sync();
+      await ctx.sync();
 
-    const res = {};
-    for (const nm of names){
-      const it = items[nm];
-      if (!it || it.isNullObject){ res[nm] = null; continue; }
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ res[nm] = null; continue; }
 
-      const t = String(it.type || '').toLowerCase();
-      if (t === 'range'){
-        const rng = rangeToLoad[nm];
-        const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-        res[nm] = _toNumberOrNull_(v);
-      }else{
-        res[nm] = _toNumberOrNull_(it.value);
-      }
-    }
-
-    return res;
-  });
-}
-
-function _diamFractionFromMm_(mm){
-  const x = Number(mm);
-  if (!Number.isFinite(x)) return null;
-
-  const tol = 0.25; // tolerancia mm
-  const MAP = [
-    { mm: 6.35,  s: '1/4"' },
-    { mm: 7.94,  s: '5/16"' },
-    { mm: 9.53,  s: '3/8"' },
-    { mm: 12.70, s: '1/2"' },
-    { mm: 15.88, s: '5/8"' },
-    { mm: 19.05, s: '3/4"' },
-    { mm: 25.40, s: '1"' },
-    { mm: 35.81, s: '1 3/8"' }
-  ];
-
-  let best = null;
-  for (const m of MAP){
-    const d = Math.abs(x - m.mm);
-    if (d <= tol && (!best || d < best.d)){
-      best = { d, s: m.s };
-    }
-  }
-  return best ? best.s : null;
-}
-
-function _fmtDiam_(diamMm){
-  const frac = _diamFractionFromMm_(diamMm);
-  if (frac) return `Ø${frac}`;
-  const x = Number(diamMm);
-  if (!Number.isFinite(x)) return '—';
-  return `Ø${x.toFixed(2)} mm`;
-}
-
-function _fmtDiamCell_(diamMm){
-  const frac = _diamFractionFromMm_(diamMm);
-  if (frac) return `${frac}`; // celda limpia
-  const x = Number(diamMm);
-  if (!Number.isFinite(x)) return '';
-  return `${x.toFixed(2)} mm`;
-}
-
-async function writeNamedCells_(kv){
-  if (typeof Excel === 'undefined' || !Excel.run){
-    throw new Error('Excel API no disponible en este host.');
-  }
-
-  return await Excel.run(async (ctx) => {
-    const missing = [];
-    const ranges = {};
-
-    for (const key of Object.keys(kv)){
-      const it = ctx.workbook.names.getItemOrNullObject(key);
-      it.load(["type"]);
-      ranges[key] = { it };
-    }
-    await ctx.sync();
-
-    for (const key of Object.keys(kv)){
-      const it = ranges[key].it;
-      if (!it || it.isNullObject){
-        missing.push(key);
-        ranges[key].rng = null;
-        continue;
-      }
-      const t = String(it.type || '').toLowerCase();
-      if (t !== 'range'){
-        missing.push(key);
-        ranges[key].rng = null;
-        continue;
-      }
-      const rng = it.getRange();
-      ranges[key].rng = rng;
-    }
-
-    if (missing.length){
-      throw new Error('Faltan nombres (o no son rangos): ' + missing.join(', '));
-    }
-
-    for (const key of Object.keys(kv)){
-      const rng = ranges[key].rng;
-      rng.values = [[kv[key]]];
-    }
-
-    await ctx.sync();
-  });
-}
-
-// ✅ NUEVO: escritura "soft" (NO lanza error si falta algún nombre)
-async function writeNamedCellsSoft_(kv){
-  if (typeof Excel === 'undefined' || !Excel.run){
-    throw new Error('Excel API no disponible en este host.');
-  }
-
-  return await Excel.run(async (ctx) => {
-    const items = [];
-
-    for (const key of Object.keys(kv)){
-      const it = ctx.workbook.names.getItemOrNullObject(key);
-      it.load(["type"]);
-      items.push({ key, it });
-    }
-    await ctx.sync();
-
-    const skipped = [];
-    for (const item of items){
-      const it = item.it;
-      if (!it || it.isNullObject){ skipped.push(item.key); continue; }
-
-      const t = String(it.type || '').toLowerCase();
-      if (t !== 'range'){ skipped.push(item.key); continue; }
-
-      try{
-        const rng = it.getRange();
-        rng.values = [[kv[item.key]]];
-      }catch(e){
-        skipped.push(item.key);
-      }
-    }
-
-    await ctx.sync();
-
-    if (skipped.length){
-      log('WARN Barras: algunos nombres no se pudieron escribir (soft): ' + skipped.join(', '));
-    }
-  });
-}
-
-// ✅ NUEVO: limpieza forzada de TODAS las celdas de barras
-async function clearBarsNamedCells_(){
-  const kv = {
-    // Opción 1
-    Sup_Diam_1: '', Sup_n_1: '', Sup_Diam_2: '', Sup_n_2: '',
-    Inf_Diam_1: '', Inf_n_1: '', Inf_Diam_2: '', Inf_n_2: '',
-
-    // Opción 2
-    Sup2_Diam_1: '', Sup2_n_1: '', Sup2_Diam_2: '', Sup2_n_2: '',
-    Inf2_Diam_1: '', Inf2_n_1: '', Inf2_Diam_2: '', Inf2_n_2: '',
-
-    // As provistos (cm2)
-    As_prov_sup1: '', As_prov_sup2: '', As_prov_inf1: '', As_prov_inf2: ''
-  };
-
-  await writeNamedCellsSoft_(kv);
-  log('Barras: limpieza forzada aplicada (todas las celdas).');
-}
-
-function _optToCells_(opt){
-  // ✅ Si no hay opción: vaciar todo (limpieza real)
-  if (!opt) {
-    return { n1:'', d1:'', n2:'', d2:'', As:'', exc:'' };
-  }
-  const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
-  const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
-  const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
-  const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '';
-
-  const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
-  const exc = (opt.excess_cm2 != null) ? Number(opt.excess_cm2) : '';
-
-  return { n1, d1, n2, d2, As, exc };
-}
-
-async function writeBarsToNamedCells2_(barsData){
-  const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-  const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
-
-  const sup1 = supOpts[0] || null;
-  const sup2 = supOpts[1] || null;
-  const inf1 = infOpts[0] || null;
-  const inf2 = infOpts[1] || null;
-
-  const s1 = _optToCells_(sup1);
-  const s2 = _optToCells_(sup2);
-  const i1 = _optToCells_(inf1);
-  const i2 = _optToCells_(inf2);
-
-  const kv = {
-    // Opción 1
-    Sup_Diam_1: s1.d1,
-    Sup_n_1: s1.n1,
-    Sup_Diam_2: s1.d2,
-    Sup_n_2: s1.n2,
-
-    Inf_Diam_1: i1.d1,
-    Inf_n_1: i1.n1,
-    Inf_Diam_2: i1.d2,
-    Inf_n_2: i1.n2,
-
-    // Opción 2
-    Sup2_Diam_1: s2.d1,
-    Sup2_n_1: s2.n1,
-    Sup2_Diam_2: s2.d2,
-    Sup2_n_2: s2.n2,
-
-    Inf2_Diam_1: i2.d1,
-    Inf2_n_1: i2.n1,
-    Inf2_Diam_2: i2.d2,
-    Inf2_n_2: i2.n2,
-
-    // As provistos (cm2)
-    As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
-    As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
-    As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
-    As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
-  };
-
-  // ✅ CLAVE: usar soft (así nunca deja valores viejos por un throw)
-  await writeNamedCellsSoft_(kv);
-
-  if (!supOpts.length) log('Barras: SUP sin opciones → celdas SUP limpiadas.');
-  if (!infOpts.length) log('Barras: INF sin opciones → celdas INF limpiadas.');
-  log('Barras: celdas por nombre rellenadas/limpiadas (Opción 1 y 2 + As_prov_*).');
-}
-
-function _fmtOptionLine_(zona, idx, opt){
-  if (!opt) return `${zona} Opción ${idx}: —`;
-  const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
-  const d1 = _fmtDiam_(opt.diam_1_mm);
-  const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : 0;
-  const d2 = (n2 > 0) ? _fmtDiam_(opt.diam_2_mm) : '';
-
-  if (n2 > 0){
-    return `${zona} Opción ${idx}: ${n1} ${d1} + ${n2} ${d2} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
-  }
-  return `${zona} Opción ${idx}: ${n1} ${d1} | As=${Number(opt.As_prov_cm2||0).toFixed(3)} cm²`;
-}
-
-// ----------------------------
-// 8.6 — Barras: lectura robusta de As y geometría (mm)
-// ----------------------------
-function _coalesce_(){
-  for (let i = 0; i < arguments.length; i++){
-    const v = arguments[i];
-    if (v !== null && typeof v !== 'undefined' && v !== '') return v;
-  }
-  return null;
-}
-
-function _cmToMm_(cm){
-  const x = Number(cm);
-  return Number.isFinite(x) ? x * 10.0 : null;
-}
-
-function _safeNum_(x){
-  const n = Number(x);
-  return Number.isFinite(n) ? n : null;
-}
-
-// ----------------------------
-// 8.6 — ping_ / execute_ / useSelection_
-// ----------------------------
-async function ping_(){
-  try{
-    setBusy(true);
-    const base = getApiUrl_();
-    const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
-
-    log('Ping GET (JSON-only esperado)');
-    const out = await _fetchJson_(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    }, API_TIMEOUT_MS_PING);
-
-    if (!out.ok && out.error){
-      showERR('No se pudo conectar. ' + out.error);
-      log('Ping ERROR: ' + out.error);
-      setState_('neutral');
-      return;
-    }
-
-    if (out.ok && out.data){
-      const d = out.data;
-      if (d.ok){
-        const txt = [
-          `service: ${d.service || '—'}`,
-          `version: ${d.version || '—'}`,
-          `now: ${d.now || '—'}`
-        ].join('\n');
-        showOK(txt);
-        log('Ping OK (version=' + (d.version || '—') + ')');
-        setState_('neutral');
-      }else{
-        const f = _formatBackendError_(d, out.raw);
-        showERR(f.userMsg);
-        log('Ping ERROR (backend): ' + f.techMsg);
-        setState_('neutral');
-      }
-    }else{
-      showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
-      log('Ping ERROR: respuesta no JSON');
-      setState_('neutral');
-    }
-
-  }catch(e){
-    showERR(e.message || String(e));
-    log('Ping ERROR: ' + (e.message || e));
-    setState_('neutral');
-  }finally{
-    setBusy(false);
-  }
-}
-
-// ✅ Extra: extraer summary_text de forma robusta (evita "Barras OK." cuando sí hay summary)
-function _extractBarsSummary_(topLevelData, barsEnvelope){
-  if (topLevelData && typeof topLevelData.summary_text === 'string' && topLevelData.summary_text.trim()){
-    return topLevelData.summary_text;
-  }
-  if (barsEnvelope && typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-    return barsEnvelope.summary_text;
-  }
-  if (barsEnvelope && barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object'){
-    if (typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-      return barsEnvelope.summary_text;
-    }
-    if (typeof barsEnvelope.data.summary_text === 'string' && barsEnvelope.data.summary_text.trim()){
-      return barsEnvelope.data.summary_text;
-    }
-  }
-  if (topLevelData && typeof topLevelData.result === 'string' && topLevelData.result.trim()){
-    return topLevelData.result;
-  }
-  return 'Barras OK.';
-}
-
-async function execute_(){
-  try{
-    setBusy(true);
-
-    const token = getToken_();
-    await storageSet_('seproincaia.token.last', token);
-
-    const action = elAction.value || 'Analizar';
-    const instruction = (elInstr.value || '').trim();
-
-    let payload = { selectionText: '', instruction, mode: currentMode };
-
-    if (action !== 'Barras'){
-      const selectionText = (elSelText.value || '').trim();
-      if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
-      payload.selectionText = selectionText;
-    }else{
-      const vals = await readNamedNumbers_([
-        "As_req_neg_cm2", "As_req_pos_cm2",
-        "As_req_neg", "As_req_pos",
-        "As_req_sup", "As_req_inf",
-
-        "b_sup_mm", "b_inf_mm",
-        "bw_sup_mm", "bw_inf_mm",
-        "ancho_sup_mm", "ancho_inf_mm",
-
-        "bsup", "binf", "b",
-
-        "cover_mm", "rec_mm", "recubrimiento_mm",
-        "rec", "cover",
-
-        "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
-        "sep_min_mm", "separacion_min_mm", "sep_min"
-      ]);
-
-      const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
-      const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
-
-      if (AsNeg == null || AsPos == null){
-        throw new Error(
-          'Faltan nombres en Excel para acero requerido.\n' +
-          'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
-          'o compat: As_req_neg y As_req_pos.'
-        );
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          res[nm] = _toNumberOrNull_(v);
+        }else{
+          res[nm] = _toNumberOrNull_(it.value);
+        }
       }
 
-      let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
-      let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
+      return res;
+    });
+  }
 
-      const bsup_cm = vals.bsup;
-      const binf_cm = vals.binf;
-      const b_cm    = vals.b;
+  function _diamFractionFromMm_(mm){
+    const x = Number(mm);
+    if (!Number.isFinite(x)) return null;
 
-      if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
-      if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
+    const tol = 0.25;
+    const MAP = [
+      { mm: 6.35,  s: '1/4"' },
+      { mm: 7.94,  s: '5/16"' },
+      { mm: 9.53,  s: '3/8"' },
+      { mm: 12.70, s: '1/2"' },
+      { mm: 15.88, s: '5/8"' },
+      { mm: 19.05, s: '3/4"' },
+      { mm: 25.40, s: '1"' },
+      { mm: 35.81, s: '1 3/8"' }
+    ];
 
-      if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
-      if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
+    let best = null;
+    for (const m of MAP){
+      const d = Math.abs(x - m.mm);
+      if (d <= tol && (!best || d < best.d)){
+        best = { d, s: m.s };
+      }
+    }
+    return best ? best.s : null;
+  }
 
-      let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
-      const rec_cm = _coalesce_(vals.rec, vals.cover);
-      if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
+  function _fmtDiam_(diamMm){
+    const frac = _diamFractionFromMm_(diamMm);
+    if (frac) return `Ø${frac}`;
+    const x = Number(diamMm);
+    if (!Number.isFinite(x)) return '—';
+    return `Ø${x.toFixed(2)} mm`;
+  }
 
-      const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
-      const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
+  function _fmtDiamCell_(diamMm){
+    const frac = _diamFractionFromMm_(diamMm);
+    if (frac) return `${frac}`;
+    const x = Number(diamMm);
+    if (!Number.isFinite(x)) return '';
+    return `${x.toFixed(2)} mm`;
+  }
 
-      payload = {
-        kind: "fundamentos_barras_v1",
-        As_req_neg_cm2: Number(AsNeg),
-        As_req_pos_cm2: Number(AsPos),
-
-        b_sup_mm: _safeNum_(bSupMm),
-        b_inf_mm: _safeNum_(bInfMm),
-        cover_mm: _safeNum_(coverMm),
-        stirrup_diam_mm: _safeNum_(stirrupMm),
-        sep_min_mm: _safeNum_(sepMinMm),
-
-        instruction,
-        mode: currentMode
-      };
-
-      log('Barras payload (geom): ' + JSON.stringify({
-        As_req_neg_cm2: payload.As_req_neg_cm2,
-        As_req_pos_cm2: payload.As_req_pos_cm2,
-        b_sup_mm: payload.b_sup_mm,
-        b_inf_mm: payload.b_inf_mm,
-        cover_mm: payload.cover_mm,
-        stirrup_diam_mm: payload.stirrup_diam_mm,
-        sep_min_mm: payload.sep_min_mm
-      }));
+  async function writeNamedCellsSoft_(kv){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
     }
 
-    const request_id = _makeReqId_();
+    return await Excel.run(async (ctx) => {
+      const items = [];
 
-    const bodyObj = {
-      action,
-      token,
-      email: "",
-      payload,
-      request_id
+      for (const key of Object.keys(kv)){
+        const it = ctx.workbook.names.getItemOrNullObject(key);
+        it.load(["type"]);
+        items.push({ key, it });
+      }
+      await ctx.sync();
+
+      const skipped = [];
+      for (const item of items){
+        const it = item.it;
+        if (!it || it.isNullObject){ skipped.push(item.key); continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t !== 'range'){ skipped.push(item.key); continue; }
+
+        try{
+          const rng = it.getRange();
+          rng.values = [[kv[item.key]]];
+        }catch(e){
+          skipped.push(item.key);
+        }
+      }
+
+      await ctx.sync();
+
+      if (skipped.length){
+        log('WARN Barras: algunos nombres no se pudieron escribir (soft): ' + skipped.join(', '));
+      }
+    });
+  }
+
+  async function clearBarsNamedCells_(){
+    const kv = {
+      Sup_Diam_1: '', Sup_n_1: '', Sup_Diam_2: '', Sup_n_2: '',
+      Inf_Diam_1: '', Inf_n_1: '', Inf_Diam_2: '', Inf_n_2: '',
+      Sup2_Diam_1: '', Sup2_n_1: '', Sup2_Diam_2: '', Sup2_n_2: '',
+      Inf2_Diam_1: '', Inf2_n_1: '', Inf2_Diam_2: '', Inf2_n_2: '',
+      As_prov_sup1: '', As_prov_sup2: '', As_prov_inf1: '', As_prov_inf2: ''
     };
 
-    const url = getApiUrl_();
-    log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
+    await writeNamedCellsSoft_(kv);
+    log('Barras: limpieza forzada aplicada (todas las celdas).');
+  }
 
-    const out = await _fetchJson_(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(bodyObj)
-    }, API_TIMEOUT_MS_POST);
-
-    if (!out.ok && out.error){
-      const msg = 'No se pudo conectar. ' + out.error;
-      showERR(msg);
-      log('ERROR red: ' + out.error);
-      setState_('neutral');
-      return;
+  function _optToCells_(opt){
+    if (!opt) {
+      return { n1:'', d1:'', n2:'', d2:'', As:'', exc:'' };
     }
+    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
+    const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
+    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
+    const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '';
 
-    const data = out.data;
+    const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
+    const exc = (opt.excess_cm2 != null) ? Number(opt.excess_cm2) : '';
 
-    if (data && data.ok){
-      log('OK: respuesta recibida');
+    return { n1, d1, n2, d2, As, exc };
+  }
 
-      const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-      setState_('active', uses);
+  async function writeBarsToNamedCells2_(barsData){
+    const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+    const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
 
-      // ====================================================
-      // SUB-BLOQUE: Barras (escritura por nombres)
-      // ====================================================
-      if (action === 'Barras'){
-        const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
-        if (!barsEnvelope){
-          showERR('Barras: el backend no devolvió "data".');
-          log('ERROR Barras: falta data en respuesta.');
-          return;
-        }
+    const sup1 = supOpts[0] || null;
+    const sup2 = supOpts[1] || null;
+    const inf1 = infOpts[0] || null;
+    const inf2 = infOpts[1] || null;
 
-        const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
-          ? barsEnvelope.data
-          : barsEnvelope;
+    const s1 = _optToCells_(sup1);
+    const s2 = _optToCells_(sup2);
+    const i1 = _optToCells_(inf1);
+    const i2 = _optToCells_(inf2);
 
-        if (model && model.error){
-          showERR('Barras: ' + String(model.error));
-          log('Barras ERROR (model.error): ' + String(model.error));
-          return;
-        }
+    const kv = {
+      Sup_Diam_1: s1.d1, Sup_n_1: s1.n1, Sup_Diam_2: s1.d2, Sup_n_2: s1.n2,
+      Inf_Diam_1: i1.d1, Inf_n_1: i1.n1, Inf_Diam_2: i1.d2, Inf_n_2: i1.n2,
+      Sup2_Diam_1: s2.d1, Sup2_n_1: s2.n1, Sup2_Diam_2: s2.d2, Sup2_n_2: s2.n2,
+      Inf2_Diam_1: i2.d1, Inf2_n_1: i2.n1, Inf2_Diam_2: i2.d2, Inf2_n_2: i2.n2,
+      As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
+      As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
+      As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
+      As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
+    };
 
-        const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
-        const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
+    await writeNamedCellsSoft_(kv);
 
-        // ✅ CASO CRÍTICO: NO HAY OPCIONES EN SUP NI EN INF → LIMPIAR TODO SIEMPRE
-        if (!supOpts.length && !infOpts.length){
-          try{
-            await clearBarsNamedCells_();
-          }catch(e){
-            log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e));
-          }
+    if (!supOpts.length) log('Barras: SUP sin opciones → celdas SUP limpiadas.');
+    if (!infOpts.length) log('Barras: INF sin opciones → celdas INF limpiadas.');
+    log('Barras: celdas por nombre rellenadas/limpiadas (Opción 1 y 2 + As_prov_*).');
+  }
 
-          const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
-          const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
-          const extra = [
-            noteSup ? ('SUP:\n' + noteSup) : '',
-            noteInf ? ('INF:\n' + noteInf) : ''
-          ].filter(Boolean).join('\n\n');
+  function _coalesce_(){
+    for (let i = 0; i < arguments.length; i++){
+      const v = arguments[i];
+      if (v !== null && typeof v !== 'undefined' && v !== '') return v;
+    }
+    return null;
+  }
 
-          showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
-          log('Barras: options vacías en ambas zonas → se limpió Excel.');
-          return;
-        }
+  function _cmToMm_(cm){
+    const x = Number(cm);
+    return Number.isFinite(x) ? x * 10.0 : null;
+  }
 
-        // ✅ CASOS NORMALES
-        const summary = _extractBarsSummary_(data, barsEnvelope);
-        showOK(String(summary || '').trim() || 'Barras OK.');
+  function _safeNum_(x){
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
 
-        // ✅ SIEMPRE escribir/limpiar lo que corresponda
-        await writeBarsToNamedCells2_(model);
+  async function ping_(){
+    try{
+      setBusy(true);
+      const base = getApiUrl_();
+      const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+      log('Ping GET (JSON-only esperado)');
+      const out = await _fetchJson_(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }, API_TIMEOUT_MS_PING);
+
+      if (!out.ok && out.error){
+        showERR('No se pudo conectar. ' + out.error);
+        log('Ping ERROR: ' + out.error);
+        setState_('neutral');
         return;
       }
 
-        // ====================================================
-        // SUB-BLOQUE: Otros modos (pegar resultado)
-        // ====================================================
+      if (out.ok && out.data){
+        const d = out.data;
+        if (d.ok){
+          const txt = [
+            `service: ${d.service || '—'}`,
+            `version: ${d.version || '—'}`,
+            `now: ${d.now || '—'}`
+          ].join('\n');
+          showOK(txt);
+          log('Ping OK (version=' + (d.version || '—') + ')');
+          setState_('neutral');
+        }else{
+          const f = _formatBackendError_(d, out.raw);
+          showERR(f.userMsg);
+          log('Ping ERROR (backend): ' + f.techMsg);
+          setState_('neutral');
+        }
+      }else{
+        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
+        log('Ping ERROR: respuesta no JSON');
+        setState_('neutral');
+      }
+
+    }catch(e){
+      showERR(e.message || String(e));
+      log('Ping ERROR: ' + (e.message || e));
+      setState_('neutral');
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  function _extractBarsSummary_(topLevelData, barsEnvelope){
+    if (topLevelData && typeof topLevelData.summary_text === 'string' && topLevelData.summary_text.trim()){
+      return topLevelData.summary_text;
+    }
+    if (barsEnvelope && typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
+      return barsEnvelope.summary_text;
+    }
+    if (barsEnvelope && barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object'){
+      if (typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
+        return barsEnvelope.summary_text;
+      }
+      if (typeof barsEnvelope.data.summary_text === 'string' && barsEnvelope.data.summary_text.trim()){
+        return barsEnvelope.data.summary_text;
+      }
+    }
+    if (topLevelData && typeof topLevelData.result === 'string' && topLevelData.result.trim()){
+      return topLevelData.result;
+    }
+    return 'Barras OK.';
+  }
+
+  async function execute_(){
+    try{
+      setBusy(true);
+
+      const token = getToken_();
+      await storageSet_('seproincaia.token.last', token);
+
+      const action = elAction.value || 'Analizar';
+      const instruction = (elInstr.value || '').trim();
+
+      let payload = { selectionText: '', instruction, mode: currentMode };
+
+      if (action !== 'Barras'){
+        const selectionText = (elSelText.value || '').trim();
+        if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
+        payload.selectionText = selectionText;
+      }else{
+        const vals = await readNamedNumbers_([
+          "As_req_neg_cm2", "As_req_pos_cm2",
+          "As_req_neg", "As_req_pos",
+          "As_req_sup", "As_req_inf",
+          "b_sup_mm", "b_inf_mm",
+          "bw_sup_mm", "bw_inf_mm",
+          "ancho_sup_mm", "ancho_inf_mm",
+          "bsup", "binf", "b",
+          "cover_mm", "rec_mm", "recubrimiento_mm",
+          "rec", "cover",
+          "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
+          "sep_min_mm", "separacion_min_mm", "sep_min"
+        ]);
+
+        const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
+        const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
+
+        if (AsNeg == null || AsPos == null){
+          throw new Error(
+            'Faltan nombres en Excel para acero requerido.\n' +
+            'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
+            'o compat: As_req_neg y As_req_pos.'
+          );
+        }
+
+        let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
+        let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
+
+        const bsup_cm = vals.bsup;
+        const binf_cm = vals.binf;
+        const b_cm    = vals.b;
+
+        if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
+        if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
+
+        if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
+        if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
+
+        let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
+        const rec_cm = _coalesce_(vals.rec, vals.cover);
+        if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
+
+        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
+        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
+
+        payload = {
+          kind: "fundamentos_barras_v1",
+          As_req_neg_cm2: Number(AsNeg),
+          As_req_pos_cm2: Number(AsPos),
+          b_sup_mm: _safeNum_(bSupMm),
+          b_inf_mm: _safeNum_(bInfMm),
+          cover_mm: _safeNum_(coverMm),
+          stirrup_diam_mm: _safeNum_(stirrupMm),
+          sep_min_mm: _safeNum_(sepMinMm),
+          instruction,
+          mode: currentMode
+        };
+
+        log('Barras payload (geom): ' + JSON.stringify({
+          As_req_neg_cm2: payload.As_req_neg_cm2,
+          As_req_pos_cm2: payload.As_req_pos_cm2,
+          b_sup_mm: payload.b_sup_mm,
+          b_inf_mm: payload.b_inf_mm,
+          cover_mm: payload.cover_mm,
+          stirrup_diam_mm: payload.stirrup_diam_mm,
+          sep_min_mm: payload.sep_min_mm
+        }));
+      }
+
+      const request_id = _makeReqId_();
+
+      const bodyObj = {
+        action,
+        token,
+        email: "",
+        payload,
+        request_id
+      };
+
+      const url = getApiUrl_();
+      log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
+
+      const out = await _fetchJson_(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(bodyObj)
+      }, API_TIMEOUT_MS_POST);
+
+      if (!out.ok && out.error){
+        const msg = 'No se pudo conectar. ' + out.error;
+        showERR(msg);
+        log('ERROR red: ' + out.error);
+        setState_('neutral');
+        return;
+      }
+
+      const data = out.data;
+
+      if (data && data.ok){
+        log('OK: respuesta recibida');
+
+        const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_('active', uses);
+
+        if (action === 'Barras'){
+          const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
+          if (!barsEnvelope){
+            showERR('Barras: el backend no devolvió "data".');
+            log('ERROR Barras: falta data en respuesta.');
+            return;
+          }
+
+          const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
+            ? barsEnvelope.data
+            : barsEnvelope;
+
+          if (model && model.error){
+            showERR('Barras: ' + String(model.error));
+            log('Barras ERROR (model.error): ' + String(model.error));
+            return;
+          }
+
+          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
+          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
+
+          if (!supOpts.length && !infOpts.length){
+            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
+
+            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
+            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
+            const extra = [
+              noteSup ? ('SUP:\n' + noteSup) : '',
+              noteInf ? ('INF:\n' + noteInf) : ''
+            ].filter(Boolean).join('\n\n');
+
+            showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
+            log('Barras: options vacías en ambas zonas → se limpió Excel.');
+            return;
+          }
+
+          const summary = _extractBarsSummary_(data, barsEnvelope);
+          showOK(String(summary || '').trim() || 'Barras OK.');
+          await writeBarsToNamedCells2_(model);
+          return;
+        }
+
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -1241,6 +1104,18 @@ async function execute_(){
 
       }else{
         const f = _formatBackendError_(data, out.raw);
+
+        // ✅ FIX: Si Barras falla a nivel global (data.ok=false), limpiar también.
+        // Esto cubre exactamente tu Caso C.
+        if ((elAction.value || '') === 'Barras'){
+          try{
+            await clearBarsNamedCells_();
+            log('Barras: limpieza aplicada desde rama ERROR (data.ok=false).');
+          }catch(e){
+            log('WARN Barras: no se pudo limpiar en rama ERROR: ' + (e.message || e));
+          }
+        }
+
         showERR(f.userMsg);
         log('ERROR backend: ' + f.techMsg);
 
@@ -1281,9 +1156,6 @@ async function execute_(){
     }
   }
 
-  // ----------------------------
-  // 8.7 — Office.onReady wiring
-  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
