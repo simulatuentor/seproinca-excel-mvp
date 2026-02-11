@@ -180,16 +180,6 @@
       margin: 10px 0;
     }
 
-    .kvs{
-      display:grid;
-      grid-template-columns: 140px 1fr;
-      gap: 6px 10px;
-      font-size: 13px;
-      align-items:center;
-    }
-    .k{ color: var(--muted); font-weight:700; }
-    .v{ color: #111827; font-weight:600; word-break: break-word; overflow-wrap:anywhere; }
-
     .log{
       background:#f6f8fa;
       border-radius: 12px;
@@ -197,7 +187,7 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
       white-space: pre-wrap;
-      max-height: 220px;
+      max-height: 240px;
       overflow:auto;
       border: 1px solid #eef2f7;
     }
@@ -237,6 +227,7 @@
       font-size:12px;
       color: var(--muted);
       margin-top: 6px;
+      line-height: 1.35;
     }
 
     .collapseHeader{
@@ -245,9 +236,7 @@
       align-items:center;
       gap:10px;
     }
-    .logHidden{
-      display:none;
-    }
+    .logHidden{ display:none; }
   </style>
 </head>
 
@@ -260,7 +249,7 @@
       <div class="logo" aria-hidden="true"></div>
       <div>SEPROINCA-IA</div>
     </div>
-    <div class="sub">Asistente Técnico Estructural</div>
+    <div class="sub">Fundamentos — Nervio Sección T</div>
     <div class="row" style="margin-top:10px; justify-content:space-between;">
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
@@ -295,62 +284,40 @@
     </div>
 
     <!-- =========================================================
-         BLOQUE 5/8 — HTML UI (SELECCIÓN)
+         BLOQUE 5/8 — HTML UI (ACCIÓN / EJECUTAR)
          ========================================================= -->
     <div class="card">
-      <div style="font-weight:900; margin-bottom:8px;">Rango seleccionado</div>
+      <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
-      <div class="kvs">
-        <div class="k">Dirección</div><div class="v" id="rangeAddr">—</div>
-        <div class="k">Contenido</div><div class="v" id="rangeCells">—</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <button class="btnGhost" id="btnUseSelection" type="button">Usar selección actual</button>
-
-      <div class="label" style="margin-top:10px;">Selección (texto)</div>
-      <textarea id="selectionText" placeholder="Aquí se cargará la selección actual..."></textarea>
-      <div class="hint">
-        Para Analizar/Redactar/Revisar: usa la selección.
-        <br>Para <b>Barras</b>: no necesitas selección (lee nombres en Excel).
-      </div>
-    </div>
-
-    <!-- =========================================================
-         BLOQUE 6/8 — HTML UI (ACCIÓN / EJECUTAR)
-         ========================================================= -->
-    <div class="card">
-      <div style="font-weight:900; margin-bottom:8px;">¿Qué quieres hacer?</div>
-
-      <div class="label" style="margin-top:0;">Acción</div>
+      <div class="label" style="margin-top:0;">¿Qué quieres hacer?</div>
       <select id="actionSelect">
-        <option value="Analizar">Analizar — Explica y resume resultados</option>
-        <option value="Redactar">Redactar — Genera texto técnico</option>
-        <option value="Revisar">Revisar — Detecta errores e inconsistencias</option>
-        <option value="Barras">Barras — Combinación de barras para As Requerido</option>
+        <option value="Redactar">Redactar — Comentarios técnicos y conclusiones (pega en celda activa)</option>
+        <option value="Barras">Barras — Propuesta de combinación de barras (lee nombres y escribe por nombre)</option>
       </select>
 
       <div class="label">Instrucción (opcional)</div>
-      <input id="instruction" type="text" placeholder="Escribe algo más específico..." />
+      <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
       <div style="height:10px"></div>
       <button class="btn" id="btnExecute" type="button">Ejecutar</button>
 
       <div class="hint" id="miniHint">
-        Flujo general: Selecciona celdas → Usar selección actual → (muévete a la celda destino) → Ejecutar
-        <br>Modo Barras: Ejecutar (rellena celdas por nombre)
+        <b>Redactar:</b> párate en la celda de Conclusiones (ej. B71:I79) y pulsa Ejecutar.<br>
+        <b>Barras:</b> pulsa Ejecutar (rellena celdas por nombre).
       </div>
     </div>
 
     <!-- =========================================================
-         BLOQUE 7/8 — HTML UI (RESULTADO / LOG)
+         BLOQUE 6/8 — HTML UI (RESULTADO)
          ========================================================= -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
-      <div id="result" class="log">Listo. Abre una hoja, selecciona celdas y pulsa “Usar selección actual”.</div>
+      <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
     </div>
 
+    <!-- =========================================================
+         BLOQUE 7/8 — HTML UI (LOG)
+         ========================================================= -->
     <div class="card">
       <div class="collapseHeader">
         <div style="font-weight:900;">Log</div>
@@ -381,17 +348,12 @@
   const elStateDot  = $('#stateDot');
   const elStateText = $('#stateText');
 
-  const elRangeAddr  = $('#rangeAddr');
-  const elRangeCells = $('#rangeCells');
-
-  const elSelText = $('#selectionText');
   const elInstr   = $('#instruction');
   const elAction  = $('#actionSelect');
 
   const elResult = $('#result');
   const elLog    = $('#log');
 
-  const btnUseSelection = $('#btnUseSelection');
   const btnExecute = $('#btnExecute');
   const btnPing = $('#btnPing');
 
@@ -405,6 +367,9 @@
 
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
+
+  // Prefijo de log (claro y consistente)
+  const LOGP = "[SEPROINCA-IA][Excel] ";
 
   function storageAvailable_(){
     try{
@@ -440,7 +405,7 @@
   }
 
   function log(msg){
-    const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+    const line = `[${new Date().toLocaleTimeString()}] ${LOGP}${msg}\n`;
     elLog.textContent = line + (elLog.textContent || '');
   }
 
@@ -459,9 +424,8 @@
   }
 
   function setBusy(isBusy){
-    [btnUseSelection, btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog].forEach(b => b && (b.disabled = !!isBusy));
+    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog].forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
-    elSelText.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
     elAction.disabled = !!isBusy;
   }
@@ -480,34 +444,6 @@
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
-  async function readSelectionExcel_(){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const range = ctx.workbook.getSelectedRange();
-      range.load(['values','address','rowCount','columnCount']);
-      await ctx.sync();
-
-      const addr = range.address || '—';
-      const rows = range.rowCount || 0;
-      const cols = range.columnCount || 0;
-
-      const values = range.values || [];
-      const text = (values && Array.isArray(values) && values.length)
-        ? values.map(r => (r||[]).map(v => String(v ?? '')).join('\t')).join('\n').trim()
-        : '';
-
-      return { addr, rows, cols, text };
-    });
-  }
-
-  function updateRangeInfo_(addr, rows, cols){
-    elRangeAddr.textContent = addr || '—';
-    elRangeCells.textContent = (rows && cols) ? `${rows} × ${cols} (${rows*cols} celdas)` : '—';
-  }
-
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -519,12 +455,16 @@
         const cell = ctx.workbook.getActiveCell();
         cell.values = [[out]];
         cell.format.wrapText = true;
-        cell.format.autofitRows();
-        cell.format.autofitColumns();
+
+        // Nota: en celdas fusionadas a veces autofitColumns no aplica;
+        // lo dejamos igual que tu versión por compatibilidad.
+        try{ cell.format.autofitRows(); }catch(e){}
+        try{ cell.format.autofitColumns(); }catch(e){}
+
         await ctx.sync();
       });
 
-      log('Resultado pegado en celda activa (solo resultado, sin uses).');
+      log('Resultado pegado en celda activa (solo resultado).');
     }catch(e){
       log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
     }
@@ -633,7 +573,7 @@
   }
 
   // ----------------------------
-  // 8.5 — Barras helpers
+  // BARRAS helpers (se mantienen)
   // ----------------------------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
@@ -697,6 +637,68 @@
     });
   }
 
+  // ----------------------------
+  // REDACTAR helpers (nuevo, NO inventa: lee valores "tal cual")
+  // ----------------------------
+  async function readNamedValuesRaw_(names){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const items = {};
+      for (const nm of names){
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            rangeToLoad[nm] = null;
+          }
+        }else{
+          rangeToLoad[nm] = null;
+        }
+      }
+      await ctx.sync();
+
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ res[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          // tal cual: número/strings vacíos => null
+          if (v === "" || typeof v === "undefined") res[nm] = null;
+          else res[nm] = v;
+        }else{
+          const v = it.value;
+          if (v === "" || typeof v === "undefined") res[nm] = null;
+          else res[nm] = v;
+        }
+      }
+      return res;
+    });
+  }
+
+  // ----------------------------
+  // Barras: writers (se mantienen)
+  // ----------------------------
   function _diamFractionFromMm_(mm){
     const x = Number(mm);
     if (!Number.isFinite(x)) return null;
@@ -722,14 +724,6 @@
       }
     }
     return best ? best.s : null;
-  }
-
-  function _fmtDiam_(diamMm){
-    const frac = _diamFractionFromMm_(diamMm);
-    if (frac) return `Ø${frac}`;
-    const x = Number(diamMm);
-    if (!Number.isFinite(x)) return '—';
-    return `Ø${x.toFixed(2)} mm`;
   }
 
   function _fmtDiamCell_(diamMm){
@@ -857,6 +851,9 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  // ----------------------------
+  // Ping
+  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -929,205 +926,236 @@
     return 'Barras OK.';
   }
 
- async function execute_(){
-  try{
-    setBusy(true);
+  // ----------------------------
+  // Execute (solo 2 acciones: Barras / Redactar)
+  // ----------------------------
+  async function execute_(){
+    try{
+      setBusy(true);
 
-    const token = getToken_();
-    await storageSet_('seproincaia.token.last', token);
+      const token = getToken_();
+      await storageSet_('seproincaia.token.last', token);
 
-    const action = elAction.value || 'Analizar';
-    const instruction = (elInstr.value || '').trim();
+      const action = elAction.value || 'Redactar';
+      const instruction = (elInstr.value || '').trim();
 
-    let payload = { selectionText: '', instruction, mode: currentMode };
-
-    if (action !== 'Barras'){
-      const selectionText = (elSelText.value || '').trim();
-      if (!selectionText) throw new Error('Primero usa “Usar selección actual” o pega texto en “Selección (texto)”.');
-      payload.selectionText = selectionText;
-    }else{
-      const vals = await readNamedNumbers_([
-        "As_req_neg_cm2", "As_req_pos_cm2",
-        "As_req_neg", "As_req_pos",
-        "As_req_sup", "As_req_inf",
-        "b_sup_mm", "b_inf_mm",
-        "bw_sup_mm", "bw_inf_mm",
-        "ancho_sup_mm", "ancho_inf_mm",
-        "bsup", "binf", "b",
-        "cover_mm", "rec_mm", "recubrimiento_mm",
-        "rec", "cover",
-        "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
-        "sep_min_mm", "separacion_min_mm", "sep_min"
-      ]);
-
-      const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
-      const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
-
-      if (AsNeg == null || AsPos == null){
-        throw new Error(
-          'Faltan nombres en Excel para acero requerido.\n' +
-          'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
-          'o compat: As_req_neg y As_req_pos.'
-        );
-      }
-
-      let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
-      let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
-
-      const bsup_cm = vals.bsup;
-      const binf_cm = vals.binf;
-      const b_cm    = vals.b;
-
-      if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
-      if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
-
-      if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
-      if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
-
-      let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
-      const rec_cm = _coalesce_(vals.rec, vals.cover);
-      if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
-
-      const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
-      const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
-
-      payload = {
-        kind: "fundamentos_barras_v1",
-        As_req_neg_cm2: Number(AsNeg),
-        As_req_pos_cm2: Number(AsPos),
-        b_sup_mm: _safeNum_(bSupMm),
-        b_inf_mm: _safeNum_(bInfMm),
-        cover_mm: _safeNum_(coverMm),
-        instruction,
-        mode: currentMode
-      };
-
-      // ✅ SOLO enviar si vienen definidos y > 0
-      const stirrupN = _safeNum_(stirrupMm);
-      if (Number.isFinite(stirrupN) && stirrupN > 0){
-        payload.stirrup_diam_mm = stirrupN;
-      }
-
-      const sepN = _safeNum_(sepMinMm);
-      if (Number.isFinite(sepN) && sepN > 0){
-        payload.sep_min_mm = sepN;
-      }
-
-      // ✅ Log limpio (sin ceros fantasma)
-      const geomLog = {
-        As_req_neg_cm2: payload.As_req_neg_cm2,
-        As_req_pos_cm2: payload.As_req_pos_cm2,
-        b_sup_mm: payload.b_sup_mm,
-        b_inf_mm: payload.b_inf_mm,
-        cover_mm: payload.cover_mm
-      };
-      if (payload.stirrup_diam_mm != null) geomLog.stirrup_diam_mm = payload.stirrup_diam_mm;
-      if (payload.sep_min_mm != null) geomLog.sep_min_mm = payload.sep_min_mm;
-
-      log('Barras payload (geom): ' + JSON.stringify(geomLog));
-    }
-
-    const request_id = _makeReqId_();
-
-    const bodyObj = {
-      action,
-      token,
-      email: "",
-      payload,
-      request_id
-    };
-
-    const url = getApiUrl_();
-    log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
-
-    const out = await _fetchJson_(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(bodyObj)
-    }, API_TIMEOUT_MS_POST);
-
-    if (!out.ok && out.error){
-      const msg = 'No se pudo conectar. ' + out.error;
-      showERR(msg);
-      log('ERROR red: ' + out.error);
-      setState_('neutral');
-      return;
-    }
-
-    const data = out.data;
-
-    if (data && data.ok){
-      log('OK: respuesta recibida');
-
-      const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-      setState_('active', uses);
+      let payload = { instruction, mode: currentMode };
 
       if (action === 'Barras'){
-        const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
-        if (!barsEnvelope){
-          showERR('Barras: el backend no devolvió "data".');
-          log('ERROR Barras: falta data en respuesta.');
-          return;
+        // ---- Barras (se mantiene tal cual tu versión, con compatibilidad de nombres) ----
+        const vals = await readNamedNumbers_([
+          "As_req_neg_cm2", "As_req_pos_cm2",
+          "As_req_neg", "As_req_pos",
+          "As_req_sup", "As_req_inf",
+          "b_sup_mm", "b_inf_mm",
+          "bw_sup_mm", "bw_inf_mm",
+          "ancho_sup_mm", "ancho_inf_mm",
+          "bsup", "binf", "b",
+          "cover_mm", "rec_mm", "recubrimiento_mm",
+          "rec", "cover",
+          "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
+          "sep_min_mm", "separacion_min_mm", "sep_min"
+        ]);
+
+        const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
+        const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
+
+        if (AsNeg == null || AsPos == null){
+          throw new Error(
+            'Faltan nombres en Excel para acero requerido.\n' +
+            'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
+            'o compat: As_req_neg y As_req_pos.'
+          );
         }
 
-        const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
-          ? barsEnvelope.data
-          : barsEnvelope;
+        let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
+        let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
 
-        if (model && model.error){
-          try{
-            await clearBarsNamedCells_();
-            log('Barras: limpieza aplicada por model.error (sin combinaciones).');
-          }catch(e){
-            log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e));
-          }
+        const bsup_cm = vals.bsup;
+        const binf_cm = vals.binf;
+        const b_cm    = vals.b;
 
-          showERR('Barras: ' + String(model.error));
-          log('Barras ERROR (model.error): ' + String(model.error));
-          return;
+        if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
+        if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
+
+        if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
+        if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
+
+        let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
+        const rec_cm = _coalesce_(vals.rec, vals.cover);
+        if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
+
+        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
+        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
+
+        payload = {
+          kind: "fundamentos_barras_v1",
+          As_req_neg_cm2: Number(AsNeg),
+          As_req_pos_cm2: Number(AsPos),
+          b_sup_mm: _safeNum_(bSupMm),
+          b_inf_mm: _safeNum_(bInfMm),
+          cover_mm: _safeNum_(coverMm),
+          instruction,
+          mode: currentMode
+        };
+
+        // ✅ SOLO enviar si vienen definidos y > 0
+        const stirrupN = _safeNum_(stirrupMm);
+        if (Number.isFinite(stirrupN) && stirrupN > 0){
+          payload.stirrup_diam_mm = stirrupN;
         }
 
-        const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
-        const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
-
-        if (!supOpts.length && !infOpts.length){
-          try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
-
-          const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
-          const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
-          const extra = [
-            noteSup ? ('SUP:\n' + noteSup) : '',
-            noteInf ? ('INF:\n' + noteInf) : ''
-          ].filter(Boolean).join('\n\n');
-
-          showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
-          log('Barras: options vacías en ambas zonas → se limpió Excel.');
-          return;
+        const sepN = _safeNum_(sepMinMm);
+        if (Number.isFinite(sepN) && sepN > 0){
+          payload.sep_min_mm = sepN;
         }
 
-        const summary = _extractBarsSummary_(data, barsEnvelope);
-        showOK(String(summary || '').trim() || 'Barras OK.');
-        await writeBarsToNamedCells2_(model);
+        // ✅ Log limpio
+        const geomLog = {
+          As_req_neg_cm2: payload.As_req_neg_cm2,
+          As_req_pos_cm2: payload.As_req_pos_cm2,
+          b_sup_mm: payload.b_sup_mm,
+          b_inf_mm: payload.b_inf_mm,
+          cover_mm: payload.cover_mm
+        };
+        if (payload.stirrup_diam_mm != null) geomLog.stirrup_diam_mm = payload.stirrup_diam_mm;
+        if (payload.sep_min_mm != null) geomLog.sep_min_mm = payload.sep_min_mm;
+
+        log('Barras payload (geom): ' + JSON.stringify(geomLog));
+      }
+
+      if (action === 'Redactar'){
+        // ---- Redactar (nuevo): lee nombres reales del caso Nervio Sección T + salida de Barras ----
+        const NAMES_RED = [
+          // Entrada / diseño:
+          "bsup","binf","t","h","rec","d","f_c","Fy","phi","Mu_pos","Mu_neg","As_req_pos","As_req_neg",
+          // Salida Barras (ya escrita):
+          "Sup_Diam_1","Sup_Diam_2","Sup_n_1","Sup_n_2","As_prov_sup1","Sup2_Diam_1","Sup2_Diam_2","Sup2_n_1","Sup2_n_2","As_prov_sup2",
+          "Inf_Diam_1","Inf_Diam_2","Inf_n_1","Inf_n_2","As_prov_inf1","Inf2_Diam_1","Inf2_Diam_2","Inf2_n_1","Inf2_n_2","As_prov_inf2"
+        ];
+
+        const data = await readNamedValuesRaw_(NAMES_RED);
+
+        // Detectar faltantes (para que backend los mencione explícitamente)
+        const missing = [];
+        for (const k of NAMES_RED){
+          if (data[k] === null || typeof data[k] === 'undefined') missing.push(k);
+        }
+
+        payload = {
+          kind: "fundamentos_redactar_nervioT_v1",
+          sheet_expected: "Nervio Seccion T",
+          instruction,
+          mode: currentMode,
+          // Data real (sin inventar):
+          data,
+          // Lista de faltantes (para mensaje claro y auditado):
+          missing
+        };
+
+        log('Redactar: nombres leídos=' + (NAMES_RED.length) + ' | faltantes=' + missing.length + (missing.length ? (' [' + missing.join(', ') + ']') : ''));
+      }
+
+      const request_id = _makeReqId_();
+
+      const bodyObj = {
+        action,
+        token,
+        email: "",
+        payload,
+        request_id
+      };
+
+      const url = getApiUrl_();
+      log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
+
+      const out = await _fetchJson_(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(bodyObj)
+      }, API_TIMEOUT_MS_POST);
+
+      if (!out.ok && out.error){
+        const msg = 'No se pudo conectar. ' + out.error;
+        showERR(msg);
+        log('ERROR red: ' + out.error);
+        setState_('neutral');
         return;
       }
 
-      const uiExtra = (typeof data.uses_remaining !== 'undefined')
-        ? `\n\n[uses_remaining: ${data.uses_remaining}]`
-        : '';
-      const uiText = String(data.result || '') + uiExtra;
+      const data = out.data;
 
-      showOK(uiText);
-      await writeResultToActiveCell_(String(data.result || ''));
+      if (data && data.ok){
+        log('OK: respuesta recibida');
 
-    }else{
-      const f = _formatBackendError_(data, out.raw);
+        const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_('active', uses);
 
+        if (action === 'Barras'){
+          const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
+          if (!barsEnvelope){
+            showERR('Barras: el backend no devolvió "data".');
+            log('ERROR Barras: falta data en respuesta.');
+            return;
+          }
 
-        // ✅ FIX: Si Barras falla a nivel global (data.ok=false), limpiar también.
-        // Esto cubre exactamente tu Caso C.
+          const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
+            ? barsEnvelope.data
+            : barsEnvelope;
+
+          if (model && model.error){
+            try{
+              await clearBarsNamedCells_();
+              log('Barras: limpieza aplicada por model.error (sin combinaciones).');
+            }catch(e){
+              log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e));
+            }
+
+            showERR('Barras: ' + String(model.error));
+            log('Barras ERROR (model.error): ' + String(model.error));
+            return;
+          }
+
+          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
+          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
+
+          if (!supOpts.length && !infOpts.length){
+            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
+
+            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
+            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
+            const extra = [
+              noteSup ? ('SUP:\n' + noteSup) : '',
+              noteInf ? ('INF:\n' + noteInf) : ''
+            ].filter(Boolean).join('\n\n');
+
+            showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
+            log('Barras: options vacías en ambas zonas → se limpió Excel.');
+            return;
+          }
+
+          const summary = _extractBarsSummary_(data, barsEnvelope);
+          showOK(String(summary || '').trim() || 'Barras OK.');
+          await writeBarsToNamedCells2_(model);
+          return;
+        }
+
+        // Redactar: mostrar + pegar en celda activa
+        const uiExtra = (typeof data.uses_remaining !== 'undefined')
+          ? `\n\n[uses_remaining: ${data.uses_remaining}]`
+          : '';
+        const uiText = String(data.result || '') + uiExtra;
+
+        showOK(uiText);
+        await writeResultToActiveCell_(String(data.result || ''));
+
+      }else{
+        const f = _formatBackendError_(data, out.raw);
+
+        // ✅ Si Barras falla a nivel global, limpiar también.
         if ((elAction.value || '') === 'Barras'){
           try{
             await clearBarsNamedCells_();
@@ -1153,30 +1181,9 @@
     }
   }
 
-  async function useSelection_(){
-    try{
-      setBusy(true);
-      const s = await readSelectionExcel_();
-      updateRangeInfo_(s.addr, s.rows, s.cols);
-
-      elSelText.value = s.text || '';
-
-      if (!s.text){
-        showERR('Selección vacía. Selecciona celdas con contenido.');
-        log('Selección vacía.');
-        return;
-      }
-
-      showOK(`Selección cargada (${s.text.length} caracteres).`);
-      log(`Selección cargada: ${s.addr} (${s.rows}×${s.cols}).`);
-    }catch(e){
-      showERR(e.message || String(e));
-      log('ERROR selección: ' + (e.message || e));
-    }finally{
-      setBusy(false);
-    }
-  }
-
+  // ----------------------------
+  // Office.onReady
+  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
@@ -1197,7 +1204,6 @@
     setMode('Aprendizaje');
     setState_('neutral');
 
-    btnUseSelection.addEventListener('click', useSelection_);
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
 
@@ -1222,21 +1228,9 @@
 
     showOK(
       'Listo.\n\n' +
-      '1) Pega tu token\n' +
-      '2) (Opcional) Selecciona celdas → “Usar selección actual”\n' +
-      '3) Ejecutar\n\n' +
-      'Modo Barras (Fundamentos):\n' +
-      '- Deben existir nombres: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
-      '  (compat: As_req_neg / As_req_pos)\n' +
-      '- (Opcional) geometría para n_max automático:\n' +
-      '  b_sup_mm y b_inf_mm (recomendado)\n' +
-      '  (compat: bsup/binf/b en cm)\n' +
-      '- (Opcional) cover_mm, stirrup_diam_mm, sep_min_mm\n' +
-      '- Deben existir celdas con nombre:\n' +
-      '  Opción 1: Sup_Diam_1, Sup_n_1, Sup_Diam_2, Sup_n_2, Inf_Diam_1, Inf_n_1, Inf_Diam_2, Inf_n_2\n' +
-      '  Opción 2: Sup2_Diam_1, Sup2_n_1, Sup2_Diam_2, Sup2_n_2, Inf2_Diam_1, Inf2_n_1, Inf2_Diam_2, Inf2_n_2\n' +
-      '  As prov: As_prov_sup1, As_prov_sup2, As_prov_inf1, As_prov_inf2\n' +
-      '- Ejecutar llena esos nombres con 2 opciones por zona.'
+      '• Redactar: párate en la celda de conclusiones (ej. B71:I79) y pulsa Ejecutar.\n' +
+      '• Barras: pulsa Ejecutar (lee nombres de As requerido/geom y llena celdas por nombre).\n\n' +
+      'Tip: si Redactar detecta nombres faltantes, lo dirá explícitamente (sin inventar datos).'
     );
     log('Office.onReady OK (host=' + host + ')');
   });
