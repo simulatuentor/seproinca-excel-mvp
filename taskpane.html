@@ -444,6 +444,13 @@
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
+  // =========================================================
+  // ✅ MODIFICADO: pegar resultado SIN alterar anchos de columnas
+  // - Funciona en cualquier celda (y en rangos fusionados).
+  // - Guarda anchos de las columnas que abarca el destino,
+  //   pega, aplica wrap + autofitRows, y RESTAURA anchos.
+  // - Se elimina autofitColumns (causa principal del “ensanchado”).
+  // =========================================================
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -452,19 +459,57 @@
       if (!out) return;
 
       await Excel.run(async (ctx) => {
-        const cell = ctx.workbook.getActiveCell();
-        cell.values = [[out]];
-        cell.format.wrapText = true;
+        const wb = ctx.workbook;
+        const sheet = wb.worksheets.getActiveWorksheet();
 
-        // Nota: en celdas fusionadas a veces autofitColumns no aplica;
-        // lo dejamos igual que tu versión por compatibilidad.
-        try{ cell.format.autofitRows(); }catch(e){}
-        try{ cell.format.autofitColumns(); }catch(e){}
+        const active = wb.getActiveCell();
+
+        // Si está dentro de un merge, trabajamos con TODA el área fusionada
+        const merged = active.getMergedAreasOrNullObject();
+        merged.load(["isNullObject", "rowIndex", "columnIndex", "rowCount", "columnCount", "address"]);
+        active.load(["rowIndex", "columnIndex", "rowCount", "columnCount", "address"]);
+
+        await ctx.sync();
+
+        const target = (!merged.isNullObject) ? merged : active;
+
+        const col0 = target.columnIndex;
+        const colCount = target.columnCount;
+
+        // 1) Guardar anchos actuales de cada columna afectada
+        const colRanges = [];
+        for (let i = 0; i < colCount; i++){
+          // 1 fila es suficiente para acceder a columnWidth de esa columna
+          const r = sheet.getRangeByIndexes(0, col0 + i, 1, 1);
+          r.format.load("columnWidth");
+          colRanges.push(r);
+        }
+        await ctx.sync();
+
+        const widths = colRanges.map(r => r.format.columnWidth);
+
+        // 2) Pegar texto + formato (sin tocar anchos)
+        target.values = [[out]];
+        target.format.wrapText = true;
+        target.format.horizontalAlignment = "Left";
+        target.format.verticalAlignment = "Top";
+
+        await ctx.sync();
+
+        // 3) (Opcional) Ajustar SOLO alturas
+        try{ target.format.autofitRows(); }catch(e){}
+
+        await ctx.sync();
+
+        // 4) Restaurar anchos por seguridad (por si Excel tocó algo)
+        for (let i = 0; i < colRanges.length; i++){
+          try{ colRanges[i].format.columnWidth = widths[i]; }catch(e){}
+        }
 
         await ctx.sync();
       });
 
-      log('Resultado pegado en celda activa (solo resultado).');
+      log('Resultado pegado en celda activa (anchos de columnas preservados).');
     }catch(e){
       log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
     }
