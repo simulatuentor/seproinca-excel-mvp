@@ -445,11 +445,9 @@
   }
 
   // =========================================================
-  // ✅ MODIFICADO: pegar resultado SIN alterar anchos de columnas
-  // - Funciona en cualquier celda (y en rangos fusionados).
-  // - Guarda anchos de las columnas que abarca el destino,
-  //   pega, aplica wrap + autofitRows, y RESTAURA anchos.
-  // - Se elimina autofitColumns (causa principal del “ensanchado”).
+  // ✅ REDACTAR — Escribir resultado en celda activa SIN cambiar anchos
+  //    Estrategia: guardar anchos de columnas afectadas -> escribir -> restaurar
+  //    + segundo pase (post-run) por si Excel "post-layout" ajusta ancho en merges.
   // =========================================================
   async function writeResultToActiveCell_(text){
     try{
@@ -458,17 +456,20 @@
       const out = String(text || '').trim();
       if (!out) return;
 
+      // Paquete para re-restauración
+      let restorePack = null;
+
+      // -------- PASO 1: escribir y restaurar dentro del mismo run
       await Excel.run(async (ctx) => {
         const wb = ctx.workbook;
         const sheet = wb.worksheets.getActiveWorksheet();
 
         const active = wb.getActiveCell();
 
-        // Si está dentro de un merge, trabajamos con TODA el área fusionada
+        // Si está en un merge, usar el área fusionada
         const merged = active.getMergedAreasOrNullObject();
-        merged.load(["isNullObject", "rowIndex", "columnIndex", "rowCount", "columnCount", "address"]);
-        active.load(["rowIndex", "columnIndex", "rowCount", "columnCount", "address"]);
-
+        merged.load(["isNullObject", "columnIndex", "columnCount"]);
+        active.load(["columnIndex", "columnCount"]);
         await ctx.sync();
 
         const target = (!merged.isNullObject) ? merged : active;
@@ -476,11 +477,10 @@
         const col0 = target.columnIndex;
         const colCount = target.columnCount;
 
-        // 1) Guardar anchos actuales de cada columna afectada
+        // 1) Guardar anchos actuales de las columnas afectadas
         const colRanges = [];
         for (let i = 0; i < colCount; i++){
-          // 1 fila es suficiente para acceder a columnWidth de esa columna
-          const r = sheet.getRangeByIndexes(0, col0 + i, 1, 1);
+          const r = sheet.getRangeByIndexes(0, col0 + i, 1, 1); // 1 celda sirve para columnWidth
           r.format.load("columnWidth");
           colRanges.push(r);
         }
@@ -488,7 +488,10 @@
 
         const widths = colRanges.map(r => r.format.columnWidth);
 
-        // 2) Pegar texto + formato (sin tocar anchos)
+        // Guardar “paquete” para el PASO 2 (post-run)
+        restorePack = { col0, colCount, widths };
+
+        // 2) Pegar texto (sin autofitColumns)
         target.values = [[out]];
         target.format.wrapText = true;
         target.format.horizontalAlignment = "Left";
@@ -496,20 +499,38 @@
 
         await ctx.sync();
 
-        // 3) (Opcional) Ajustar SOLO alturas
+        // 3) Ajustar SOLO alturas (permitido)
         try{ target.format.autofitRows(); }catch(e){}
 
         await ctx.sync();
 
-        // 4) Restaurar anchos por seguridad (por si Excel tocó algo)
+        // 4) Restaurar anchos dentro del run
         for (let i = 0; i < colRanges.length; i++){
-          try{ colRanges[i].format.columnWidth = widths[i]; }catch(e){}
+          try{
+            if (widths[i] != null) colRanges[i].format.columnWidth = widths[i];
+          }catch(e){}
         }
-
         await ctx.sync();
       });
 
-      log('Resultado pegado en celda activa (anchos de columnas preservados).');
+      // -------- PASO 2: re-restaurar inmediatamente después (por si Excel los tocó al final)
+      await new Promise(r => setTimeout(r, 0));
+
+      if (restorePack && restorePack.colCount > 0){
+        await Excel.run(async (ctx) => {
+          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+
+          for (let i = 0; i < restorePack.colCount; i++){
+            const w = restorePack.widths[i];
+            if (w == null) continue;
+            const r = sheet.getRangeByIndexes(0, restorePack.col0 + i, 1, 1);
+            r.format.columnWidth = w;
+          }
+          await ctx.sync();
+        });
+      }
+
+      log('Resultado pegado en celda activa (anchos preservados con doble restauración).');
     }catch(e){
       log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
     }
