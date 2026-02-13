@@ -16,22 +16,29 @@
        ========================================================= -->
   <style>
     :root{
-      --blue1:#1f4f86;
-      --blue2:#163d69;
+      /* Paleta “Seproinca Pro” */
+      --blue1:#25336D;
+      --blue2:#1c2858;
+      --brandGreen:#91b93b;
+
       --ink:#0f172a;
       --muted:#6b7280;
       --b:#e5e7eb;
       --bg:#ffffff;
       --card:#ffffff;
 
-      --green:#16a34a;
-      --yellow:#f59e0b;
-      --red:#ef4444;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --err:#ef4444;
+
       --btn:#0b3a64;
       --btn2:#0f4b82;
 
-      --shadow: 0 6px 18px rgba(15,23,42,.08);
+      --shadow: 0 10px 22px rgba(15,23,42,.08);
+      --shadow2: 0 6px 16px rgba(15,23,42,.08);
       --radius: 14px;
+
+      --focus: 0 0 0 3px rgba(37,51,109,.18);
     }
 
     html,body{ height:100%; }
@@ -42,6 +49,7 @@
       color: var(--ink);
     }
 
+    /* Header */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -55,18 +63,29 @@
       display:flex;
       align-items:center;
       gap:10px;
-      font-weight:800;
+      font-weight:900;
       letter-spacing:.5px;
       font-size:18px;
     }
     .brand .logo{
       width:22px;
       height:22px;
-      border:2px solid rgba(255,255,255,.9);
+      border:2px solid rgba(255,255,255,.92);
       border-left-color: transparent;
       transform: rotate(45deg);
       border-radius: 4px;
+      position: relative;
     }
+    .brand .logo::after{
+      content:"";
+      position:absolute;
+      inset:5px;
+      border-radius:3px;
+      background: rgba(145,185,59,.95);
+      opacity:.9;
+      transform: rotate(-45deg);
+    }
+
     .sub{
       opacity:.92;
       font-size:12.5px;
@@ -76,7 +95,7 @@
 
     .wrap{
       padding: 12px 12px 18px;
-      max-width: 520px;
+      max-width: 560px;
     }
 
     .card{
@@ -110,6 +129,11 @@
       font-size:14px;
       outline: none;
       background:#fff;
+      transition: box-shadow .12s ease, border-color .12s ease;
+    }
+    input:focus, textarea:focus, select:focus{
+      box-shadow: var(--focus);
+      border-color: rgba(37,51,109,.45);
     }
     textarea{ min-height: 82px; resize: vertical; }
 
@@ -126,6 +150,7 @@
       padding-right: 34px;
     }
 
+    /* Chips */
     .chip{
       display:inline-flex;
       align-items:center;
@@ -147,6 +172,7 @@
     .dot.red{ background: #ef4444; }
     .dot.neutral{ background:#9ca3af; }
 
+    /* Buttons */
     .btn{
       width:100%;
       border:0;
@@ -155,9 +181,13 @@
       background: linear-gradient(180deg, var(--btn2), var(--btn));
       color:#fff;
       font-size: 15px;
-      font-weight: 800;
+      font-weight: 900;
       cursor:pointer;
       box-shadow: 0 10px 18px rgba(11,58,100,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
     }
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
@@ -166,35 +196,73 @@
       border:1px solid var(--b);
       background:#fff;
       color:#111827;
-      font-weight:700;
-      border-radius: 14px;
-      padding: 10px 12px;
+      font-weight:800;
+      border-radius: 12px;
+      padding: 9px 10px;
       cursor:pointer;
-      width:100%;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
 
+    .btnMini{
+      border:1px solid var(--b);
+      background:#fff;
+      color:#111827;
+      font-weight:800;
+      border-radius: 12px;
+      padding: 7px 10px;
+      cursor:pointer;
+      font-size:12.5px;
+    }
+    .btnMini:disabled{ opacity:.6; cursor:not-allowed; }
+
+    /* Divider */
     .divider{
       height:1px;
       background: var(--b);
       margin: 10px 0;
     }
 
-    .log{
-      background:#f6f8fa;
+    /* Log / Result boxes */
+    .monoBox{
+      background:#f7f9fb;
       border-radius: 12px;
       padding: 10px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
       white-space: pre-wrap;
-      max-height: 240px;
+      max-height: 260px;
       overflow:auto;
       border: 1px solid #eef2f7;
+      box-shadow: var(--shadow2);
+      margin:0;
     }
 
-    .ok{ color:#065f46; font-weight:900; }
-    .bad{ color:#991b1b; font-weight:900; }
+    /* Status badges */
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid rgba(15,23,42,.12);
+      background: #fff;
+      color: var(--ink);
+      user-select:none;
+    }
+    .badge .bDot{
+      width:10px;height:10px;border-radius:999px;
+      background:#9ca3af;
+    }
+    .badge.ok .bDot{ background: var(--ok); }
+    .badge.err .bDot{ background: var(--err); }
+    .badge.neu .bDot{ background: #9ca3af; }
+    .badge.ok{ border-color: rgba(22,163,74,.25); }
+    .badge.err{ border-color: rgba(239,68,68,.25); }
+    .badge.neu{ border-color: rgba(107,114,128,.25); }
 
+    /* Toggle */
     .modeRow{
       display:flex;
       gap:10px;
@@ -213,7 +281,7 @@
       border:0;
       background:transparent;
       padding: 7px 10px;
-      font-weight:800;
+      font-weight:900;
       cursor:pointer;
       color:#334155;
       font-size: 12.5px;
@@ -230,6 +298,7 @@
       line-height: 1.35;
     }
 
+    /* Collapsible */
     .collapseHeader{
       display:flex;
       justify-content:space-between;
@@ -237,6 +306,40 @@
       gap:10px;
     }
     .logHidden{ display:none; }
+
+    /* Result header row */
+    .cardHeaderRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      flex-wrap:wrap;
+    }
+    .cardTitle{
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .rightActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    /* Spinner */
+    .spinner{
+      width:16px;height:16px;
+      border-radius:999px;
+      border: 2px solid rgba(255,255,255,.55);
+      border-top-color: rgba(255,255,255,1);
+      animation: spin .75s linear infinite;
+      display:none;
+    }
+    .spinner.on{ display:inline-block; }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
   </style>
 </head>
 
@@ -296,10 +399,13 @@
       </select>
 
       <div class="label">Instrucción (opcional)</div>
-      <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
+      <input id="instruction" type="text" placeholder="Ej: solo usar Ø1/2&quot;, o evita Ø3/8&quot;, o sugiere alternativa práctica..." />
 
       <div style="height:10px"></div>
-      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
+      <button class="btn" id="btnExecute" type="button">
+        <span class="spinner" id="spinExec" aria-hidden="true"></span>
+        <span id="btnExecuteText">Ejecutar</span>
+      </button>
 
       <div class="hint" id="miniHint">
         <b>Redactar:</b> párate en la celda de Conclusiones (ej. B71:I79) y pulsa Ejecutar.<br>
@@ -311,8 +417,20 @@
          BLOQUE 6/8 — HTML UI (RESULTADO)
          ========================================================= -->
     <div class="card">
-      <div style="font-weight:900; margin-bottom:8px;">Resultado</div>
-      <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
+      <div class="cardHeaderRow">
+        <div class="cardTitle">
+          <span>Resultado</span>
+          <span class="badge neu" id="resultBadge" title="Estado del último resultado">
+            <span class="bDot"></span>
+            <span id="resultTitle">EN ESPERA</span>
+          </span>
+        </div>
+        <div class="rightActions">
+          <button class="btnMini" id="btnCopyResult" type="button">Copiar</button>
+          <button class="btnMini" id="btnClearResult" type="button">Limpiar</button>
+        </div>
+      </div>
+      <pre id="result" class="monoBox">Listo. Pega tu token y elige Redactar o Barras.</pre>
     </div>
 
     <!-- =========================================================
@@ -322,14 +440,14 @@
       <div class="collapseHeader">
         <div style="font-weight:900;">Log</div>
         <div class="row" style="gap:8px;">
-          <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
-          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto; padding:8px 10px;">Ver log</button>
+          <button class="btnGhost" id="btnPing" type="button" style="width:auto;">Ping</button>
+          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto;">Ver log</button>
         </div>
       </div>
 
       <div style="height:10px"></div>
       <div id="logWrap" class="logHidden">
-        <div id="log" class="log"></div>
+        <pre id="log" class="monoBox"></pre>
       </div>
     </div>
   </div>
@@ -362,6 +480,14 @@
 
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
+
+  // NUEVO UI
+  const elSpinExec = $('#spinExec');
+  const elBtnExecuteText = $('#btnExecuteText');
+  const elResultBadge = $('#resultBadge');
+  const elResultTitle = $('#resultTitle');
+  const btnCopyResult = $('#btnCopyResult');
+  const btnClearResult = $('#btnClearResult');
 
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
@@ -409,25 +535,31 @@
     elLog.textContent = line + (elLog.textContent || '');
   }
 
-  function escapeHtml(s){
-    return String(s || '')
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;');
+  function setResultBadge_(kind){
+    const k = (kind === 'ok' || kind === 'err' || kind === 'neu') ? kind : 'neu';
+    elResultBadge.classList.remove('ok','err','neu');
+    elResultBadge.classList.add(k);
+    elResultTitle.textContent = (k === 'ok') ? 'OK' : (k === 'err') ? 'ERROR' : 'EN ESPERA';
   }
 
   function showOK(text){
-    elResult.innerHTML = `<span class="ok">OK</span>\n\n${escapeHtml(text || '')}`;
+    setResultBadge_('ok');
+    elResult.textContent = String(text || '').trim();
   }
   function showERR(text){
-    elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
+    setResultBadge_('err');
+    elResult.textContent = String(text || '').trim();
   }
 
   function setBusy(isBusy){
-    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog].forEach(b => b && (b.disabled = !!isBusy));
-    elToken.disabled = !!isBusy;
-    elInstr.disabled = !!isBusy;
-    elAction.disabled = !!isBusy;
+    const b = !!isBusy;
+    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult].forEach(x => x && (x.disabled = b));
+    elToken.disabled = b;
+    elInstr.disabled = b;
+    elAction.disabled = b;
+
+    if (elSpinExec) elSpinExec.classList.toggle('on', b);
+    if (elBtnExecuteText) elBtnExecuteText.textContent = b ? 'Procesando…' : 'Ejecutar';
   }
 
   let currentMode = 'Aprendizaje';
@@ -446,8 +578,6 @@
 
   // =========================================================
   // ✅ REDACTAR — Escribir resultado en celda activa SIN cambiar anchos
-  //    Estrategia: guardar anchos de columnas afectadas -> escribir -> restaurar
-  //    + segundo pase (post-run) por si Excel "post-layout" ajusta ancho en merges.
   // =========================================================
   async function writeResultToActiveCell_(text){
     try{
@@ -456,17 +586,14 @@
       const out = String(text || '').trim();
       if (!out) return;
 
-      // Paquete para re-restauración
       let restorePack = null;
 
-      // -------- PASO 1: escribir y restaurar dentro del mismo run
       await Excel.run(async (ctx) => {
         const wb = ctx.workbook;
         const sheet = wb.worksheets.getActiveWorksheet();
 
         const active = wb.getActiveCell();
 
-        // Si está en un merge, usar el área fusionada
         const merged = active.getMergedAreasOrNullObject();
         merged.load(["isNullObject", "columnIndex", "columnCount"]);
         active.load(["columnIndex", "columnCount"]);
@@ -477,21 +604,17 @@
         const col0 = target.columnIndex;
         const colCount = target.columnCount;
 
-        // 1) Guardar anchos actuales de las columnas afectadas
         const colRanges = [];
         for (let i = 0; i < colCount; i++){
-          const r = sheet.getRangeByIndexes(0, col0 + i, 1, 1); // 1 celda sirve para columnWidth
+          const r = sheet.getRangeByIndexes(0, col0 + i, 1, 1);
           r.format.load("columnWidth");
           colRanges.push(r);
         }
         await ctx.sync();
 
         const widths = colRanges.map(r => r.format.columnWidth);
-
-        // Guardar “paquete” para el PASO 2 (post-run)
         restorePack = { col0, colCount, widths };
 
-        // 2) Pegar texto (sin autofitColumns)
         target.values = [[out]];
         target.format.wrapText = true;
         target.format.horizontalAlignment = "Left";
@@ -499,12 +622,9 @@
 
         await ctx.sync();
 
-        // 3) Ajustar SOLO alturas (permitido)
         try{ target.format.autofitRows(); }catch(e){}
-
         await ctx.sync();
 
-        // 4) Restaurar anchos dentro del run
         for (let i = 0; i < colRanges.length; i++){
           try{
             if (widths[i] != null) colRanges[i].format.columnWidth = widths[i];
@@ -513,13 +633,11 @@
         await ctx.sync();
       });
 
-      // -------- PASO 2: re-restaurar inmediatamente después (por si Excel los tocó al final)
       await new Promise(r => setTimeout(r, 0));
 
       if (restorePack && restorePack.colCount > 0){
         await Excel.run(async (ctx) => {
           const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-
           for (let i = 0; i < restorePack.colCount; i++){
             const w = restorePack.widths[i];
             if (w == null) continue;
@@ -704,7 +822,7 @@
   }
 
   // ----------------------------
-  // REDACTAR helpers (nuevo, NO inventa: lee valores "tal cual")
+  // REDACTAR helpers (se mantiene)
   // ----------------------------
   async function readNamedValuesRaw_(names){
     if (typeof Excel === 'undefined' || !Excel.run){
@@ -749,7 +867,6 @@
         if (t === 'range'){
           const rng = rangeToLoad[nm];
           const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          // tal cual: número/strings vacíos => null
           if (v === "" || typeof v === "undefined") res[nm] = null;
           else res[nm] = v;
         }else{
@@ -1008,7 +1125,6 @@
       let payload = { instruction, mode: currentMode };
 
       if (action === 'Barras'){
-        // ---- Barras (se mantiene tal cual tu versión, con compatibilidad de nombres) ----
         const vals = await readNamedNumbers_([
           "As_req_neg_cm2", "As_req_pos_cm2",
           "As_req_neg", "As_req_pos",
@@ -1065,7 +1181,6 @@
           mode: currentMode
         };
 
-        // ✅ SOLO enviar si vienen definidos y > 0
         const stirrupN = _safeNum_(stirrupMm);
         if (Number.isFinite(stirrupN) && stirrupN > 0){
           payload.stirrup_diam_mm = stirrupN;
@@ -1076,7 +1191,6 @@
           payload.sep_min_mm = sepN;
         }
 
-        // ✅ Log limpio
         const geomLog = {
           As_req_neg_cm2: payload.As_req_neg_cm2,
           As_req_pos_cm2: payload.As_req_pos_cm2,
@@ -1091,18 +1205,14 @@
       }
 
       if (action === 'Redactar'){
-        // ---- Redactar (nuevo): lee nombres reales del caso Nervio Sección T + salida de Barras ----
         const NAMES_RED = [
-          // Entrada / diseño:
           "bsup","binf","t","h","rec","d","f_c","Fy","phi","Mu_pos","Mu_neg","As_req_pos","As_req_neg",
-          // Salida Barras (ya escrita):
           "Sup_Diam_1","Sup_Diam_2","Sup_n_1","Sup_n_2","As_prov_sup1","Sup2_Diam_1","Sup2_Diam_2","Sup2_n_1","Sup2_n_2","As_prov_sup2",
           "Inf_Diam_1","Inf_Diam_2","Inf_n_1","Inf_n_2","As_prov_inf1","Inf2_Diam_1","Inf2_Diam_2","Inf2_n_1","Inf2_n_2","As_prov_inf2"
         ];
 
         const data = await readNamedValuesRaw_(NAMES_RED);
 
-        // Detectar faltantes (para que backend los mencione explícitamente)
         const missing = [];
         for (const k of NAMES_RED){
           if (data[k] === null || typeof data[k] === 'undefined') missing.push(k);
@@ -1113,9 +1223,7 @@
           sheet_expected: "Nervio Seccion T",
           instruction,
           mode: currentMode,
-          // Data real (sin inventar):
           data,
-          // Lista de faltantes (para mensaje claro y auditado):
           missing
         };
 
@@ -1209,7 +1317,6 @@
           return;
         }
 
-        // Redactar: mostrar + pegar en celda activa
         const uiExtra = (typeof data.uses_remaining !== 'undefined')
           ? `\n\n[uses_remaining: ${data.uses_remaining}]`
           : '';
@@ -1221,7 +1328,6 @@
       }else{
         const f = _formatBackendError_(data, out.raw);
 
-        // ✅ Si Barras falla a nivel global, limpiar también.
         if ((elAction.value || '') === 'Barras'){
           try{
             await clearBarsNamedCells_();
@@ -1248,6 +1354,40 @@
   }
 
   // ----------------------------
+  // UI helpers: copiar/limpiar resultado
+  // ----------------------------
+  async function copyResult_(){
+    try{
+      const txt = String(elResult.textContent || '').trim();
+      if (!txt) return;
+
+      if (navigator && navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(txt);
+        log('Resultado copiado al portapapeles.');
+        return;
+      }
+
+      // Fallback: selección manual
+      const r = document.createRange();
+      r.selectNodeContents(elResult);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      document.execCommand('copy');
+      sel.removeAllRanges();
+      log('Resultado copiado (fallback).');
+    }catch(e){
+      log('WARN copiar: ' + (e.message || e));
+    }
+  }
+
+  function clearResult_(){
+    setResultBadge_('neu');
+    elResult.textContent = '—';
+    log('Resultado limpiado.');
+  }
+
+  // ----------------------------
   // Office.onReady
   // ----------------------------
   Office.onReady(async (info) => {
@@ -1269,6 +1409,7 @@
 
     setMode('Aprendizaje');
     setState_('neutral');
+    setResultBadge_('neu');
 
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
@@ -1281,6 +1422,9 @@
       const isHidden = elLogWrap.classList.contains('logHidden');
       setLogVisible_(isHidden);
     });
+
+    btnCopyResult.addEventListener('click', copyResult_);
+    btnClearResult.addEventListener('click', clearResult_);
 
     let tmr = null;
     elToken.addEventListener('input', () => {
