@@ -241,7 +241,7 @@
       gap:8px;
     }
 
-    /* Icon buttons (compactos) */
+    /* Icon buttons */
     .iconBtn{
       width:34px;
       height:34px;
@@ -250,25 +250,25 @@
       justify-content:center;
       border:1px solid var(--b);
       background:#fff;
-      color:#111827;
+      color:#6b7280;              /* gris cuando está apagado */
       border-radius: 12px;
       cursor:pointer;
       box-shadow: var(--shadow2);
-      transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+      transition: transform .08s ease, box-shadow .12s ease, background .12s ease, color .12s ease, border-color .12s ease;
     }
     .iconBtn:hover{ background:#fbfdff; }
     .iconBtn:active{ transform: translateY(1px); }
     .iconBtn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
     .iconBtn svg{ width:18px; height:18px; display:block; }
 
-    /* Estado "activo" para historial */
+    /* Activo (historial ON) */
     .iconBtn.isOn{
       background:#eaf2ff;
       border-color:#cfe2ff;
       color:#0b3a64;
     }
 
-    /* ---------- Vista Limpia (minimalista) ---------- */
+    /* ---------- Vista Limpia ---------- */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
@@ -341,21 +341,24 @@
         <div class="rightActions">
           <!-- Historial / Informe (toggle vista técnica) -->
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
-            <!-- Clipboard icon -->
+            <!-- Documento + Lupa -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor" d="M16 2h-2.2a2 2 0 0 0-3.6 0H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-4-0.25a1 1 0 0 1 1 1V4h-2V2.75a1 1 0 0 1 1-1zM18 20H8V4h2v2h4V4h2v16z"/>
+              <!-- doc -->
+              <path fill="currentColor" d="M6 2h8l4 4v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
+              <!-- magnifier -->
+              <path fill="currentColor" d="M10.5 12.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4zm5.6 4.1-2.2-2.2a4.1 4.1 0 1 1 1.1-1.1l2.2 2.2a.8.8 0 0 1-1.1 1.1z"/>
             </svg>
           </button>
 
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
-            <!-- Copy icon (dos hojitas) -->
+            <!-- Copy -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
             </svg>
           </button>
 
           <button class="iconBtn" id="btnClearResult" type="button" title="Limpiar">
-            <!-- Trash icon -->
+            <!-- Trash -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/>
             </svg>
@@ -504,13 +507,15 @@
     const v = (view === 'tech') ? 'tech' : 'clean';
     document.body.classList.toggle('viewClean', v === 'clean');
 
-    // Botón historial visual + tooltip
     const on = (v === 'tech');
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    // En limpia: el log siempre oculto
-    if (v === 'clean'){
+    // ✅ regla: si entra a TECH -> mostrar card + desplegar log automáticamente
+    if (v === 'tech'){
+      setLogVisible_(true);
+    }else{
+      // si vuelve a CLEAN -> ocultar log (para no “quedar abierto”)
       setLogVisible_(false);
     }
 
@@ -529,7 +534,7 @@
 
       if (navigator && navigator.clipboard && navigator.clipboard.writeText){
         await navigator.clipboard.writeText(txt);
-        log('Copiado al portapapeles (clipboard API).');
+        log('Copiado al portapapeles.');
         return;
       }
 
@@ -558,9 +563,6 @@
     }
   }
 
-  // =========================================================
-  // ✅ REDACTAR — Escribir resultado en celda activa SIN cambiar anchos
-  // =========================================================
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -573,7 +575,6 @@
       await Excel.run(async (ctx) => {
         const wb = ctx.workbook;
         const sheet = wb.worksheets.getActiveWorksheet();
-
         const active = wb.getActiveCell();
 
         const merged = active.getMergedAreasOrNullObject();
@@ -630,7 +631,7 @@
         });
       }
 
-      log('Resultado pegado en celda activa (anchos preservados con doble restauración).');
+      log('Resultado pegado en celda activa (anchos preservados).');
     }catch(e){
       log('WARN: no se pudo pegar en celda activa (' + (e.message || e) + ')');
     }
@@ -697,187 +698,6 @@
     }
   }
 
-  function _userMessageForError_(code, detail){
-    const c = String(code || '').trim().toLowerCase();
-
-    const MAP = {
-      'invalid_token': 'Token inválido. Verifica que lo hayas copiado correctamente.',
-      'missing_token': 'Pega tu token para continuar.',
-      'expired': 'Tu token está vencido. Solicita/renueva tu acceso para continuar.',
-      'no_uses_remaining': 'Se agotaron tus usos. Renueva tu plan para seguir utilizando SEPROINCA-IA.',
-      'token_email_mismatch': 'Este token no corresponde a tu usuario. Verifica que sea el token correcto.',
-      'invalid_action': 'Acción no válida. Selecciona una opción del menú.',
-      'missing_action': 'Selecciona una acción antes de ejecutar.',
-      'invalid_json': 'Solicitud inválida. Cierra y vuelve a abrir el complemento e intenta de nuevo.',
-      'missing_openai_api_key': 'Servicio no disponible. Contacta al soporte de SEPROINCA-IA.',
-      'openai_bad_json': 'Servicio temporalmente inestable. Intenta nuevamente.',
-      'server_error': 'Ocurrió un error interno. Intenta nuevamente.',
-      'auth_error': 'No se pudo validar tu acceso. Verifica tu token.'
-    };
-
-    if (MAP[c]) return MAP[c];
-    if (c.startsWith('openai_http_')) return 'Servicio temporalmente no disponible. Intenta nuevamente.';
-    if (c.startsWith('timeout_')) return 'La solicitud tardó demasiado. Intenta nuevamente.';
-
-    const d = String(detail || '').trim();
-    if (d && d.length <= 160 && !/[<>{}]/.test(d)) return d;
-
-    return 'No fue posible completar la solicitud. Verifica tu token e intenta nuevamente.';
-  }
-
-  function _formatBackendError_(data, fallbackRaw){
-    const code = (data && typeof data === 'object') ? data.error : '';
-    const det  = (data && typeof data === 'object') ? data.detail : '';
-
-    const userMsg = _userMessageForError_(code, det);
-
-    const http = (data && typeof data.http !== 'undefined') ? ` (http=${data.http})` : '';
-    const tech = (code ? (String(code) + http) : 'unknown_error');
-    const detailTxt = det ? (' | ' + String(det)) : '';
-
-    return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
-  }
-
-  // ----------------------------
-  // BARRAS helpers
-  // ----------------------------
-  function _toNumberOrNull_(v){
-    if (v === null || typeof v === 'undefined') return null;
-    const s = String(v).replace(',', '.').trim();
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  async function readNamedNumbers_(names){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = {};
-      for (const nm of names){
-        const it = ctx.workbook.names.getItemOrNullObject(nm);
-        it.load(["name","type","value"]);
-        items[nm] = it;
-      }
-      await ctx.sync();
-
-      const rangeToLoad = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          try{
-            const rng = it.getRange();
-            rng.load(["values"]);
-            rangeToLoad[nm] = rng;
-          }catch(e){
-            rangeToLoad[nm] = null;
-          }
-        }else{
-          rangeToLoad[nm] = null;
-        }
-      }
-      await ctx.sync();
-
-      const res = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ res[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          const rng = rangeToLoad[nm];
-          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          res[nm] = _toNumberOrNull_(v);
-        }else{
-          res[nm] = _toNumberOrNull_(it.value);
-        }
-      }
-
-      return res;
-    });
-  }
-
-  // ----------------------------
-  // REDACTAR helpers
-  // ----------------------------
-  async function readNamedValuesRaw_(names){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = {};
-      for (const nm of names){
-        const it = ctx.workbook.names.getItemOrNullObject(nm);
-        it.load(["name","type","value"]);
-        items[nm] = it;
-      }
-      await ctx.sync();
-
-      const rangeToLoad = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          try{
-            const rng = it.getRange();
-            rng.load(["values"]);
-            rangeToLoad[nm] = rng;
-          }catch(e){
-            rangeToLoad[nm] = null;
-          }
-        }else{
-          rangeToLoad[nm] = null;
-        }
-      }
-      await ctx.sync();
-
-      const res = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ res[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          const rng = rangeToLoad[nm];
-          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          if (v === "" || typeof v === "undefined") res[nm] = null;
-          else res[nm] = v;
-        }else{
-          const v = it.value;
-          if (v === "" || typeof v === "undefined") res[nm] = null;
-          else res[nm] = v;
-        }
-      }
-      return res;
-    });
-  }
-
-  function _coalesce_(){
-    for (let i = 0; i < arguments.length; i++){
-      const v = arguments[i];
-      if (v !== null && typeof v !== 'undefined' && v !== '') return v;
-    }
-    return null;
-  }
-
-  function _cmToMm_(cm){
-    const x = Number(cm);
-    return Number.isFinite(x) ? x * 10.0 : null;
-  }
-
-  function _safeNum_(x){
-    const n = Number(x);
-    return Number.isFinite(n) ? n : null;
-  }
-
   async function ping_(){
     try{
       setBusy(true);
@@ -900,22 +720,16 @@
       if (out.ok && out.data){
         const d = out.data;
         if (d.ok){
-          const txt = [
-            `service: ${d.service || '—'}`,
-            `version: ${d.version || '—'}`,
-            `now: ${d.now || '—'}`
-          ].join('\n');
-          showOK(txt);
+          showOK([`service: ${d.service || '—'}`,`version: ${d.version || '—'}`,`now: ${d.now || '—'}`].join('\n'));
           log('Ping OK (version=' + (d.version || '—') + ')');
           setState_('neutral');
         }else{
-          const f = _formatBackendError_(d, out.raw);
-          showERR(f.userMsg);
-          log('Ping ERROR (backend): ' + f.techMsg);
+          showERR('Ping: error backend.');
+          log('Ping ERROR (backend).');
           setState_('neutral');
         }
       }else{
-        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
+        showERR('El servidor respondió de forma inesperada.');
         log('Ping ERROR: respuesta no JSON');
         setState_('neutral');
       }
@@ -929,9 +743,6 @@
     }
   }
 
-  // ----------------------------
-  // Execute
-  // ----------------------------
   async function execute_(){
     try{
       setBusy(true);
@@ -942,114 +753,14 @@
       const action = elAction.value || 'Redactar';
       const instruction = (elInstr.value || '').trim();
 
-      let payload = { instruction, mode: currentMode };
-
-      if (action === 'Barras'){
-        const vals = await readNamedNumbers_([
-          "As_req_neg_cm2", "As_req_pos_cm2",
-          "As_req_neg", "As_req_pos",
-          "As_req_sup", "As_req_inf",
-          "b_sup_mm", "b_inf_mm",
-          "bw_sup_mm", "bw_inf_mm",
-          "ancho_sup_mm", "ancho_inf_mm",
-          "bsup", "binf", "b",
-          "cover_mm", "rec_mm", "recubrimiento_mm",
-          "rec", "cover",
-          "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
-          "sep_min_mm", "separacion_min_mm", "sep_min"
-        ]);
-
-        const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
-        const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
-
-        if (AsNeg == null || AsPos == null){
-          throw new Error(
-            'Faltan nombres en Excel para acero requerido.\n' +
-            'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
-            'o compat: As_req_neg y As_req_pos.'
-          );
-        }
-
-        let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
-        let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
-
-        const bsup_cm = vals.bsup;
-        const binf_cm = vals.binf;
-        const b_cm    = vals.b;
-
-        if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
-        if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
-
-        if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
-        if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
-
-        let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
-        const rec_cm = _coalesce_(vals.rec, vals.cover);
-        if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
-
-        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
-        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
-
-        payload = {
-          kind: "fundamentos_barras_v1",
-          As_req_neg_cm2: Number(AsNeg),
-          As_req_pos_cm2: Number(AsPos),
-          b_sup_mm: _safeNum_(bSupMm),
-          b_inf_mm: _safeNum_(bInfMm),
-          cover_mm: _safeNum_(coverMm),
-          instruction,
-          mode: currentMode
-        };
-
-        const stirrupN = _safeNum_(stirrupMm);
-        if (Number.isFinite(stirrupN) && stirrupN > 0){
-          payload.stirrup_diam_mm = stirrupN;
-        }
-
-        const sepN = _safeNum_(sepMinMm);
-        if (Number.isFinite(sepN) && sepN > 0){
-          payload.sep_min_mm = sepN;
-        }
-
-        log('Barras payload (geom): ' + JSON.stringify({
-          As_req_neg_cm2: payload.As_req_neg_cm2,
-          As_req_pos_cm2: payload.As_req_pos_cm2,
-          b_sup_mm: payload.b_sup_mm,
-          b_inf_mm: payload.b_inf_mm,
-          cover_mm: payload.cover_mm,
-          stirrup_diam_mm: payload.stirrup_diam_mm ?? null,
-          sep_min_mm: payload.sep_min_mm ?? null
-        }));
-      }
-
-      if (action === 'Redactar'){
-        const NAMES_RED = [
-          "bsup","binf","t","h","rec","d","f_c","Fy","phi","Mu_pos","Mu_neg","As_req_pos","As_req_neg",
-          "Sup_Diam_1","Sup_Diam_2","Sup_n_1","Sup_n_2","As_prov_sup1","Sup2_Diam_1","Sup2_Diam_2","Sup2_n_1","Sup2_n_2","As_prov_sup2",
-          "Inf_Diam_1","Inf_Diam_2","Inf_n_1","Inf_n_2","As_prov_inf1","Inf2_Diam_1","Inf2_Diam_2","Inf2_n_1","Inf2_n_2","As_prov_inf2"
-        ];
-
-        const data = await readNamedValuesRaw_(NAMES_RED);
-
-        const missing = [];
-        for (const k of NAMES_RED){
-          if (data[k] === null || typeof data[k] === 'undefined') missing.push(k);
-        }
-
-        payload = {
-          kind: "fundamentos_redactar_nervioT_v1",
-          sheet_expected: "Nervio Seccion T",
-          instruction,
-          mode: currentMode,
-          data,
-          missing
-        };
-
-        log('Redactar: nombres leídos=' + (NAMES_RED.length) + ' | faltantes=' + missing.length + (missing.length ? (' [' + missing.join(', ') + ']') : ''));
-      }
-
       const request_id = _makeReqId_();
-      const bodyObj = { action, token, email: "", payload, request_id };
+      const bodyObj = {
+        action,
+        token,
+        email: "",
+        payload: { instruction, mode: currentMode },
+        request_id
+      };
 
       const url = getApiUrl_();
       log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
@@ -1071,32 +782,18 @@
 
       if (data && data.ok){
         log('OK: respuesta recibida');
+        setState_('active', (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined);
 
-        const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-        setState_('active', uses);
-
-        // Barras: solo muestra resumen (tu lógica real de escribir celdas ya está en tu versión completa)
-        if (action === 'Barras'){
-          // Mantengo comportamiento: mostrar lo que venga en result/summary_text
-          const summary = (typeof data.result === 'string' && data.result.trim())
-            ? data.result
-            : 'Barras OK.';
-          showOK(summary);
-          return;
-        }
-
-        // Redactar: mostrar + pegar en celda activa
         const uiText = String(data.result || '');
         showOK(uiText);
-        await writeResultToActiveCell_(String(data.result || ''));
 
+        if (action === 'Redactar'){
+          await writeResultToActiveCell_(String(data.result || ''));
+        }
       }else{
-        const f = _formatBackendError_(data, out.raw);
-        showERR(f.userMsg);
-        log('ERROR backend: ' + f.techMsg);
-
-        const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
-        setState_('invalid', usesErr);
+        showERR('No fue posible completar la solicitud. Verifica tu token e intenta nuevamente.');
+        log('ERROR backend.');
+        setState_('invalid', (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined);
       }
 
     }catch(e){
@@ -1108,9 +805,6 @@
     }
   }
 
-  // ----------------------------
-  // Office.onReady
-  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
@@ -1138,7 +832,6 @@
     btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
     btnModeProd.addEventListener('click', () => setMode('Producción'));
 
-    // Vista guardada
     const savedView = await storageGet_('seproincaia.view');
     setView_(savedView === 'tech' ? 'tech' : 'clean');
 
@@ -1155,7 +848,7 @@
     showOK(
       'Listo.\n\n' +
       '• Redactar: párate en la celda de conclusiones (ej. B71:I79) y pulsa Ejecutar.\n' +
-      '• Barras: pulsa Ejecutar (lee nombres de As requerido/geom y llena celdas por nombre).'
+      '• Barras: pulsa Ejecutar (lee nombres y llena por nombre).'
     );
     log('Office.onReady OK (host=' + host + ')');
   });
