@@ -16,29 +16,23 @@
        ========================================================= -->
   <style>
     :root{
-      /* Paleta “Seproinca Pro” */
-      --blue1:#25336D;
-      --blue2:#1c2858;
-      --brandGreen:#91b93b;
-
+      --blue1:#1f4f86;
+      --blue2:#163d69;
       --ink:#0f172a;
       --muted:#6b7280;
       --b:#e5e7eb;
       --bg:#ffffff;
       --card:#ffffff;
 
-      --ok:#16a34a;
-      --warn:#f59e0b;
-      --err:#ef4444;
-
+      --green:#16a34a;
+      --yellow:#f59e0b;
+      --red:#ef4444;
       --btn:#0b3a64;
       --btn2:#0f4b82;
 
-      --shadow: 0 10px 22px rgba(15,23,42,.08);
-      --shadow2: 0 6px 16px rgba(15,23,42,.08);
+      --shadow: 0 6px 18px rgba(15,23,42,.08);
+      --shadow2: 0 6px 14px rgba(15,23,42,.08);
       --radius: 14px;
-
-      --focus: 0 0 0 3px rgba(37,51,109,.18);
     }
 
     html,body{ height:100%; }
@@ -49,7 +43,6 @@
       color: var(--ink);
     }
 
-    /* Header */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -63,29 +56,18 @@
       display:flex;
       align-items:center;
       gap:10px;
-      font-weight:900;
+      font-weight:800;
       letter-spacing:.5px;
       font-size:18px;
     }
     .brand .logo{
       width:22px;
       height:22px;
-      border:2px solid rgba(255,255,255,.92);
+      border:2px solid rgba(255,255,255,.9);
       border-left-color: transparent;
       transform: rotate(45deg);
       border-radius: 4px;
-      position: relative;
     }
-    .brand .logo::after{
-      content:"";
-      position:absolute;
-      inset:5px;
-      border-radius:3px;
-      background: rgba(145,185,59,.95);
-      opacity:.9;
-      transform: rotate(-45deg);
-    }
-
     .sub{
       opacity:.92;
       font-size:12.5px;
@@ -95,7 +77,7 @@
 
     .wrap{
       padding: 12px 12px 18px;
-      max-width: 560px;
+      max-width: 520px;
     }
 
     .card{
@@ -129,11 +111,6 @@
       font-size:14px;
       outline: none;
       background:#fff;
-      transition: box-shadow .12s ease, border-color .12s ease;
-    }
-    input:focus, textarea:focus, select:focus{
-      box-shadow: var(--focus);
-      border-color: rgba(37,51,109,.45);
     }
     textarea{ min-height: 82px; resize: vertical; }
 
@@ -150,7 +127,6 @@
       padding-right: 34px;
     }
 
-    /* Chips */
     .chip{
       display:inline-flex;
       align-items:center;
@@ -172,7 +148,6 @@
     .dot.red{ background: #ef4444; }
     .dot.neutral{ background:#9ca3af; }
 
-    /* Buttons */
     .btn{
       width:100%;
       border:0;
@@ -181,13 +156,9 @@
       background: linear-gradient(180deg, var(--btn2), var(--btn));
       color:#fff;
       font-size: 15px;
-      font-weight: 900;
+      font-weight: 800;
       cursor:pointer;
       box-shadow: 0 10px 18px rgba(11,58,100,.18);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
     }
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
@@ -196,73 +167,35 @@
       border:1px solid var(--b);
       background:#fff;
       color:#111827;
-      font-weight:800;
-      border-radius: 12px;
-      padding: 9px 10px;
+      font-weight:700;
+      border-radius: 14px;
+      padding: 10px 12px;
       cursor:pointer;
+      width:100%;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .btnMini{
-      border:1px solid var(--b);
-      background:#fff;
-      color:#111827;
-      font-weight:800;
-      border-radius: 12px;
-      padding: 7px 10px;
-      cursor:pointer;
-      font-size:12.5px;
-    }
-    .btnMini:disabled{ opacity:.6; cursor:not-allowed; }
-
-    /* Divider */
     .divider{
       height:1px;
       background: var(--b);
       margin: 10px 0;
     }
 
-    /* Log / Result boxes */
-    .monoBox{
-      background:#f7f9fb;
+    .log{
+      background:#f6f8fa;
       border-radius: 12px;
       padding: 10px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
       white-space: pre-wrap;
-      max-height: 260px;
+      max-height: 240px;
       overflow:auto;
       border: 1px solid #eef2f7;
-      box-shadow: var(--shadow2);
-      margin:0;
     }
 
-    /* Status badges */
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 900;
-      border: 1px solid rgba(15,23,42,.12);
-      background: #fff;
-      color: var(--ink);
-      user-select:none;
-    }
-    .badge .bDot{
-      width:10px;height:10px;border-radius:999px;
-      background:#9ca3af;
-    }
-    .badge.ok .bDot{ background: var(--ok); }
-    .badge.err .bDot{ background: var(--err); }
-    .badge.neu .bDot{ background: #9ca3af; }
-    .badge.ok{ border-color: rgba(22,163,74,.25); }
-    .badge.err{ border-color: rgba(239,68,68,.25); }
-    .badge.neu{ border-color: rgba(107,114,128,.25); }
+    .ok{ color:#065f46; font-weight:900; }
+    .bad{ color:#991b1b; font-weight:900; }
 
-    /* Toggle */
     .modeRow{
       display:flex;
       gap:10px;
@@ -281,7 +214,7 @@
       border:0;
       background:transparent;
       padding: 7px 10px;
-      font-weight:900;
+      font-weight:800;
       cursor:pointer;
       color:#334155;
       font-size: 12.5px;
@@ -298,7 +231,6 @@
       line-height: 1.35;
     }
 
-    /* Collapsible */
     .collapseHeader{
       display:flex;
       justify-content:space-between;
@@ -307,39 +239,67 @@
     }
     .logHidden{ display:none; }
 
-    /* Result header row */
-    .cardHeaderRow{
+    /* ---------- Premium header Resultado ---------- */
+    .resultHeader{
       display:flex;
-      align-items:center;
       justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-      flex-wrap:wrap;
-    }
-    .cardTitle{
-      font-weight:900;
-      display:flex;
       align-items:center;
       gap:10px;
+      margin-bottom:8px;
     }
     .rightActions{
       display:flex;
-      gap:8px;
       align-items:center;
-      flex-wrap:wrap;
+      gap:8px;
     }
 
-    /* Spinner */
-    .spinner{
-      width:16px;height:16px;
-      border-radius:999px;
-      border: 2px solid rgba(255,255,255,.55);
-      border-top-color: rgba(255,255,255,1);
-      animation: spin .75s linear infinite;
-      display:none;
+    /* Icon buttons (compactos) */
+    .iconBtn{
+      width:34px;
+      height:34px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid var(--b);
+      background:#fff;
+      color:#111827;
+      border-radius: 12px;
+      cursor:pointer;
+      box-shadow: var(--shadow2);
+      transition: transform .08s ease, box-shadow .12s ease;
     }
-    .spinner.on{ display:inline-block; }
-    @keyframes spin{ to{ transform: rotate(360deg); } }
+    .iconBtn:active{ transform: translateY(1px); }
+    .iconBtn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+    .iconBtn svg{ width:18px; height:18px; display:block; }
+
+    /* Switch Limpia/Técnica */
+    .viewSwitch{
+      display:flex;
+      gap:0;
+      border:1px solid var(--b);
+      border-radius: 999px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .viewSwitch button{
+      border:0;
+      background:transparent;
+      padding: 7px 10px;
+      font-weight:900;
+      cursor:pointer;
+      color:#334155;
+      font-size: 12.5px;
+    }
+    .viewSwitch button.active{
+      background:#eaf2ff;
+      color:#0b3a64;
+    }
+
+    /* ---------- Vista Limpia (minimalista) ---------- */
+    body.viewClean .cardLog{ display:none !important; }     /* oculta el card completo del Log */
+    body.viewClean #btnPing{ display:none !important; }     /* oculta Ping */
+    body.viewClean #btnToggleLog{ display:none !important; }/* oculta toggle log */
+    body.viewClean #hostChip{ display:none !important; }    /* oculta host */
   </style>
 </head>
 
@@ -399,13 +359,10 @@
       </select>
 
       <div class="label">Instrucción (opcional)</div>
-      <input id="instruction" type="text" placeholder="Ej: solo usar Ø1/2&quot;, o evita Ø3/8&quot;, o sugiere alternativa práctica..." />
+      <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
       <div style="height:10px"></div>
-      <button class="btn" id="btnExecute" type="button">
-        <span class="spinner" id="spinExec" aria-hidden="true"></span>
-        <span id="btnExecuteText">Ejecutar</span>
-      </button>
+      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
 
       <div class="hint" id="miniHint">
         <b>Redactar:</b> párate en la celda de Conclusiones (ej. B71:I79) y pulsa Ejecutar.<br>
@@ -417,37 +374,48 @@
          BLOQUE 6/8 — HTML UI (RESULTADO)
          ========================================================= -->
     <div class="card">
-      <div class="cardHeaderRow">
-        <div class="cardTitle">
-          <span>Resultado</span>
-          <span class="badge neu" id="resultBadge" title="Estado del último resultado">
-            <span class="bDot"></span>
-            <span id="resultTitle">EN ESPERA</span>
-          </span>
-        </div>
+      <div class="resultHeader">
+        <div style="font-weight:900;">Resultado</div>
         <div class="rightActions">
-          <button class="btnMini" id="btnCopyResult" type="button">Copiar</button>
-          <button class="btnMini" id="btnClearResult" type="button">Limpiar</button>
+          <div class="viewSwitch" role="tablist" aria-label="Vista">
+            <button id="btnViewClean" class="active" type="button" title="Vista limpia">Limpia</button>
+            <button id="btnViewTech" type="button" title="Vista técnica">Técnica</button>
+          </div>
+
+          <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
+            <!-- Copy icon (dos hojitas) -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
+            </svg>
+          </button>
+
+          <button class="iconBtn" id="btnClearResult" type="button" title="Limpiar">
+            <!-- Trash icon -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/>
+            </svg>
+          </button>
         </div>
       </div>
-      <pre id="result" class="monoBox">Listo. Pega tu token y elige Redactar o Barras.</pre>
+
+      <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
     </div>
 
     <!-- =========================================================
          BLOQUE 7/8 — HTML UI (LOG)
          ========================================================= -->
-    <div class="card">
+    <div class="card cardLog">
       <div class="collapseHeader">
         <div style="font-weight:900;">Log</div>
         <div class="row" style="gap:8px;">
-          <button class="btnGhost" id="btnPing" type="button" style="width:auto;">Ping</button>
-          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto;">Ver log</button>
+          <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
+          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto; padding:8px 10px;">Ver log</button>
         </div>
       </div>
 
       <div style="height:10px"></div>
       <div id="logWrap" class="logHidden">
-        <pre id="log" class="monoBox"></pre>
+        <div id="log" class="log"></div>
       </div>
     </div>
   </div>
@@ -481,13 +449,10 @@
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
 
-  // NUEVO UI
-  const elSpinExec = $('#spinExec');
-  const elBtnExecuteText = $('#btnExecuteText');
-  const elResultBadge = $('#resultBadge');
-  const elResultTitle = $('#resultTitle');
-  const btnCopyResult = $('#btnCopyResult');
+  const btnCopyResult  = $('#btnCopyResult');
   const btnClearResult = $('#btnClearResult');
+  const btnViewClean = $('#btnViewClean');
+  const btnViewTech  = $('#btnViewTech');
 
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
@@ -535,31 +500,26 @@
     elLog.textContent = line + (elLog.textContent || '');
   }
 
-  function setResultBadge_(kind){
-    const k = (kind === 'ok' || kind === 'err' || kind === 'neu') ? kind : 'neu';
-    elResultBadge.classList.remove('ok','err','neu');
-    elResultBadge.classList.add(k);
-    elResultTitle.textContent = (k === 'ok') ? 'OK' : (k === 'err') ? 'ERROR' : 'EN ESPERA';
+  function escapeHtml(s){
+    return String(s || '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
   }
 
   function showOK(text){
-    setResultBadge_('ok');
-    elResult.textContent = String(text || '').trim();
+    elResult.innerHTML = `<span class="ok">OK</span>\n\n${escapeHtml(text || '')}`;
   }
   function showERR(text){
-    setResultBadge_('err');
-    elResult.textContent = String(text || '').trim();
+    elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
   function setBusy(isBusy){
-    const b = !!isBusy;
-    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult].forEach(x => x && (x.disabled = b));
-    elToken.disabled = b;
-    elInstr.disabled = b;
-    elAction.disabled = b;
-
-    if (elSpinExec) elSpinExec.classList.toggle('on', b);
-    if (elBtnExecuteText) elBtnExecuteText.textContent = b ? 'Procesando…' : 'Ejecutar';
+    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult, btnViewClean, btnViewTech]
+      .forEach(b => b && (b.disabled = !!isBusy));
+    elToken.disabled = !!isBusy;
+    elInstr.disabled = !!isBusy;
+    elAction.disabled = !!isBusy;
   }
 
   let currentMode = 'Aprendizaje';
@@ -574,6 +534,59 @@
     const v = !!visible;
     elLogWrap.classList.toggle('logHidden', !v);
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
+  }
+
+  function setView_(v){
+    const view = (v === 'tech') ? 'tech' : 'clean';
+    document.body.classList.toggle('viewClean', view === 'clean');
+    btnViewClean.classList.toggle('active', view === 'clean');
+    btnViewTech.classList.toggle('active', view === 'tech');
+
+    // En limpia: el log siempre oculto
+    if (view === 'clean'){
+      setLogVisible_(false);
+    }
+
+    storageSet_('seproincaia.view', view).catch(()=>{});
+    log('Vista: ' + (view === 'clean' ? 'Limpia' : 'Técnica'));
+  }
+
+  async function copyResult_(){
+    try{
+      const txt = String(elResult.textContent || '').trim();
+      if (!txt) return;
+
+      // Clipboard API (preferido)
+      if (navigator && navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(txt);
+        log('Copiado al portapapeles (clipboard API).');
+        return;
+      }
+
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      log('Copiado al portapapeles (fallback).');
+
+    }catch(e){
+      log('WARN copiar: ' + (e.message || e));
+    }
+  }
+
+  function clearResult_(){
+    try{
+      elResult.textContent = 'Listo. Pega tu token y elige Redactar o Barras.';
+      log('Resultado limpiado.');
+    }catch(e){
+      log('WARN limpiar: ' + (e.message || e));
+    }
   }
 
   // =========================================================
@@ -822,7 +835,7 @@
   }
 
   // ----------------------------
-  // REDACTAR helpers (se mantiene)
+  // REDACTAR helpers (nuevo, NO inventa: lee valores "tal cual")
   // ----------------------------
   async function readNamedValuesRaw_(names){
     if (typeof Excel === 'undefined' || !Excel.run){
@@ -1354,40 +1367,6 @@
   }
 
   // ----------------------------
-  // UI helpers: copiar/limpiar resultado
-  // ----------------------------
-  async function copyResult_(){
-    try{
-      const txt = String(elResult.textContent || '').trim();
-      if (!txt) return;
-
-      if (navigator && navigator.clipboard && navigator.clipboard.writeText){
-        await navigator.clipboard.writeText(txt);
-        log('Resultado copiado al portapapeles.');
-        return;
-      }
-
-      // Fallback: selección manual
-      const r = document.createRange();
-      r.selectNodeContents(elResult);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(r);
-      document.execCommand('copy');
-      sel.removeAllRanges();
-      log('Resultado copiado (fallback).');
-    }catch(e){
-      log('WARN copiar: ' + (e.message || e));
-    }
-  }
-
-  function clearResult_(){
-    setResultBadge_('neu');
-    elResult.textContent = '—';
-    log('Resultado limpiado.');
-  }
-
-  // ----------------------------
   // Office.onReady
   // ----------------------------
   Office.onReady(async (info) => {
@@ -1409,7 +1388,6 @@
 
     setMode('Aprendizaje');
     setState_('neutral');
-    setResultBadge_('neu');
 
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
@@ -1426,6 +1404,13 @@
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
 
+    btnViewClean.addEventListener('click', () => setView_('clean'));
+    btnViewTech.addEventListener('click', () => setView_('tech'));
+
+    // Cargar vista guardada
+    const savedView = await storageGet_('seproincaia.view');
+    setView_(savedView === 'tech' ? 'tech' : 'clean');
+
     let tmr = null;
     elToken.addEventListener('input', () => {
       if (tmr) clearTimeout(tmr);
@@ -1438,7 +1423,7 @@
 
     showOK(
       'Listo.\n\n' +
-      '• Redactar: párate en la celda de conclusiones (ej. B71:I79) y pulsa Ejecutar.\n' +
+      '• Redactar: párate en la celda de Informe Tecnico (ej. B70:I79) y pulsa Ejecutar.\n' +
       '• Barras: pulsa Ejecutar (lee nombres de As requerido/geom y llena celdas por nombre).\n\n' +
       'Tip: si Redactar detecta nombres faltantes, lo dirá explícitamente (sin inventar datos).'
     );
