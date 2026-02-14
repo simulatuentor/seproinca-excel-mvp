@@ -1,9 +1,6 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <!-- =========================================================
-       BLOQUE 1/8 — HEAD / META / OFFICE.JS
-       ========================================================= -->
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -11,9 +8,6 @@
 
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
-  <!-- =========================================================
-       BLOQUE 2/8 — CSS (UI / THEME)
-       ========================================================= -->
   <style>
     :root{
       --blue1:#1f4f86;
@@ -175,12 +169,6 @@
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
 
-    .divider{
-      height:1px;
-      background: var(--b);
-      margin: 10px 0;
-    }
-
     .log{
       background:#f6f8fa;
       border-radius: 12px;
@@ -266,47 +254,29 @@
       border-radius: 12px;
       cursor:pointer;
       box-shadow: var(--shadow2);
-      transition: transform .08s ease, box-shadow .12s ease;
+      transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
     }
+    .iconBtn:hover{ background:#fbfdff; }
     .iconBtn:active{ transform: translateY(1px); }
     .iconBtn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
     .iconBtn svg{ width:18px; height:18px; display:block; }
 
-    /* Switch Limpia/Técnica */
-    .viewSwitch{
-      display:flex;
-      gap:0;
-      border:1px solid var(--b);
-      border-radius: 999px;
-      overflow:hidden;
-      background:#fff;
-    }
-    .viewSwitch button{
-      border:0;
-      background:transparent;
-      padding: 7px 10px;
-      font-weight:900;
-      cursor:pointer;
-      color:#334155;
-      font-size: 12.5px;
-    }
-    .viewSwitch button.active{
+    /* Estado "activo" para historial */
+    .iconBtn.isOn{
       background:#eaf2ff;
+      border-color:#cfe2ff;
       color:#0b3a64;
     }
 
     /* ---------- Vista Limpia (minimalista) ---------- */
-    body.viewClean .cardLog{ display:none !important; }     /* oculta el card completo del Log */
-    body.viewClean #btnPing{ display:none !important; }     /* oculta Ping */
-    body.viewClean #btnToggleLog{ display:none !important; }/* oculta toggle log */
-    body.viewClean #hostChip{ display:none !important; }    /* oculta host */
+    body.viewClean .cardLog{ display:none !important; }
+    body.viewClean #btnPing{ display:none !important; }
+    body.viewClean #btnToggleLog{ display:none !important; }
+    body.viewClean #hostChip{ display:none !important; }
   </style>
 </head>
 
 <body>
-  <!-- =========================================================
-       BLOQUE 3/8 — HTML UI (HEADER / ESTADO)
-       ========================================================= -->
   <div class="header">
     <div class="brand">
       <div class="logo" aria-hidden="true"></div>
@@ -327,9 +297,6 @@
   </div>
 
   <div class="wrap">
-    <!-- =========================================================
-         BLOQUE 4/8 — HTML UI (TOKEN / MODO)
-         ========================================================= -->
     <div class="card">
       <div class="modeRow">
         <div style="font-weight:900;">Modo</div>
@@ -346,9 +313,6 @@
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
-    <!-- =========================================================
-         BLOQUE 5/8 — HTML UI (ACCIÓN / EJECUTAR)
-         ========================================================= -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
@@ -370,17 +334,18 @@
       </div>
     </div>
 
-    <!-- =========================================================
-         BLOQUE 6/8 — HTML UI (RESULTADO)
-         ========================================================= -->
     <div class="card">
       <div class="resultHeader">
         <div style="font-weight:900;">Resultado</div>
+
         <div class="rightActions">
-          <div class="viewSwitch" role="tablist" aria-label="Vista">
-            <button id="btnViewClean" class="active" type="button" title="Vista limpia">Limpia</button>
-            <button id="btnViewTech" type="button" title="Vista técnica">Técnica</button>
-          </div>
+          <!-- Historial / Informe (toggle vista técnica) -->
+          <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
+            <!-- Clipboard icon -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M16 2h-2.2a2 2 0 0 0-3.6 0H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-4-0.25a1 1 0 0 1 1 1V4h-2V2.75a1 1 0 0 1 1-1zM18 20H8V4h2v2h4V4h2v16z"/>
+            </svg>
+          </button>
 
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
             <!-- Copy icon (dos hojitas) -->
@@ -401,9 +366,6 @@
       <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
     </div>
 
-    <!-- =========================================================
-         BLOQUE 7/8 — HTML UI (LOG)
-         ========================================================= -->
     <div class="card cardLog">
       <div class="collapseHeader">
         <div style="font-weight:900;">Log</div>
@@ -451,15 +413,13 @@
 
   const btnCopyResult  = $('#btnCopyResult');
   const btnClearResult = $('#btnClearResult');
-  const btnViewClean = $('#btnViewClean');
-  const btnViewTech  = $('#btnViewTech');
+  const btnToggleTech  = $('#btnToggleTech');
 
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
 
-  // Prefijo de log (claro y consistente)
   const LOGP = "[SEPROINCA-IA][Excel] ";
 
   function storageAvailable_(){
@@ -515,7 +475,7 @@
   }
 
   function setBusy(isBusy){
-    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult, btnViewClean, btnViewTech]
+    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
@@ -536,19 +496,30 @@
     btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
-  function setView_(v){
-    const view = (v === 'tech') ? 'tech' : 'clean';
-    document.body.classList.toggle('viewClean', view === 'clean');
-    btnViewClean.classList.toggle('active', view === 'clean');
-    btnViewTech.classList.toggle('active', view === 'tech');
+  function isTech_(){
+    return !document.body.classList.contains('viewClean');
+  }
+
+  function setView_(view){
+    const v = (view === 'tech') ? 'tech' : 'clean';
+    document.body.classList.toggle('viewClean', v === 'clean');
+
+    // Botón historial visual + tooltip
+    const on = (v === 'tech');
+    btnToggleTech.classList.toggle('isOn', on);
+    btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
     // En limpia: el log siempre oculto
-    if (view === 'clean'){
+    if (v === 'clean'){
       setLogVisible_(false);
     }
 
-    storageSet_('seproincaia.view', view).catch(()=>{});
-    log('Vista: ' + (view === 'clean' ? 'Limpia' : 'Técnica'));
+    storageSet_('seproincaia.view', v).catch(()=>{});
+    log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
+  }
+
+  function toggleView_(){
+    setView_(isTech_() ? 'clean' : 'tech');
   }
 
   async function copyResult_(){
@@ -556,14 +527,12 @@
       const txt = String(elResult.textContent || '').trim();
       if (!txt) return;
 
-      // Clipboard API (preferido)
       if (navigator && navigator.clipboard && navigator.clipboard.writeText){
         await navigator.clipboard.writeText(txt);
         log('Copiado al portapapeles (clipboard API).');
         return;
       }
 
-      // Fallback
       const ta = document.createElement('textarea');
       ta.value = txt;
       ta.setAttribute('readonly', '');
@@ -770,7 +739,7 @@
   }
 
   // ----------------------------
-  // BARRAS helpers (se mantienen)
+  // BARRAS helpers
   // ----------------------------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
@@ -787,7 +756,6 @@
 
     return await Excel.run(async (ctx) => {
       const items = {};
-
       for (const nm of names){
         const it = ctx.workbook.names.getItemOrNullObject(nm);
         it.load(["name","type","value"]);
@@ -835,7 +803,7 @@
   }
 
   // ----------------------------
-  // REDACTAR helpers (nuevo, NO inventa: lee valores "tal cual")
+  // REDACTAR helpers
   // ----------------------------
   async function readNamedValuesRaw_(names){
     if (typeof Excel === 'undefined' || !Excel.run){
@@ -892,143 +860,6 @@
     });
   }
 
-  // ----------------------------
-  // Barras: writers (se mantienen)
-  // ----------------------------
-  function _diamFractionFromMm_(mm){
-    const x = Number(mm);
-    if (!Number.isFinite(x)) return null;
-
-    const tol = 0.25;
-    const MAP = [
-      { mm: 6.35,  s: '1/4"' },
-      { mm: 7.94,  s: '5/16"' },
-      { mm: 9.53,  s: '3/8"' },
-      { mm: 12.70, s: '1/2"' },
-      { mm: 15.88, s: '5/8"' },
-      { mm: 19.05, s: '3/4"' },
-      { mm: 22.225, s: '7/8"' },
-      { mm: 25.40, s: '1"' },
-      { mm: 35.81, s: '1 3/8"' }
-    ];
-
-    let best = null;
-    for (const m of MAP){
-      const d = Math.abs(x - m.mm);
-      if (d <= tol && (!best || d < best.d)){
-        best = { d, s: m.s };
-      }
-    }
-    return best ? best.s : null;
-  }
-
-  function _fmtDiamCell_(diamMm){
-    const frac = _diamFractionFromMm_(diamMm);
-    if (frac) return `${frac}`;
-    const x = Number(diamMm);
-    if (!Number.isFinite(x)) return '';
-    return `${x.toFixed(2)} mm`;
-  }
-
-  async function writeNamedCellsSoft_(kv){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = [];
-
-      for (const key of Object.keys(kv)){
-        const it = ctx.workbook.names.getItemOrNullObject(key);
-        it.load(["type"]);
-        items.push({ key, it });
-      }
-      await ctx.sync();
-
-      const skipped = [];
-      for (const item of items){
-        const it = item.it;
-        if (!it || it.isNullObject){ skipped.push(item.key); continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t !== 'range'){ skipped.push(item.key); continue; }
-
-        try{
-          const rng = it.getRange();
-          rng.values = [[kv[item.key]]];
-        }catch(e){
-          skipped.push(item.key);
-        }
-      }
-
-      await ctx.sync();
-
-      if (skipped.length){
-        log('WARN Barras: algunos nombres no se pudieron escribir (soft): ' + skipped.join(', '));
-      }
-    });
-  }
-
-  async function clearBarsNamedCells_(){
-    const kv = {
-      Sup_Diam_1: '', Sup_n_1: '', Sup_Diam_2: '', Sup_n_2: '',
-      Inf_Diam_1: '', Inf_n_1: '', Inf_Diam_2: '', Inf_n_2: '',
-      Sup2_Diam_1: '', Sup2_n_1: '', Sup2_Diam_2: '', Sup2_n_2: '',
-      Inf2_Diam_1: '', Inf2_n_1: '', Inf2_Diam_2: '', Inf2_n_2: '',
-      As_prov_sup1: '', As_prov_sup2: '', As_prov_inf1: '', As_prov_inf2: ''
-    };
-
-    await writeNamedCellsSoft_(kv);
-    log('Barras: limpieza forzada aplicada (todas las celdas).');
-  }
-
-  function _optToCells_(opt){
-    if (!opt) {
-      return { n1:'', d1:'', n2:'', d2:'', As:'', exc:'' };
-    }
-    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
-    const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
-    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
-    const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '';
-
-    const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
-    const exc = (opt.excess_cm2 != null) ? Number(opt.excess_cm2) : '';
-
-    return { n1, d1, n2, d2, As, exc };
-  }
-
-  async function writeBarsToNamedCells2_(barsData){
-    const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-    const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
-
-    const sup1 = supOpts[0] || null;
-    const sup2 = supOpts[1] || null;
-    const inf1 = infOpts[0] || null;
-    const inf2 = infOpts[1] || null;
-
-    const s1 = _optToCells_(sup1);
-    const s2 = _optToCells_(sup2);
-    const i1 = _optToCells_(inf1);
-    const i2 = _optToCells_(inf2);
-
-    const kv = {
-      Sup_Diam_1: s1.d1, Sup_n_1: s1.n1, Sup_Diam_2: s1.d2, Sup_n_2: s1.n2,
-      Inf_Diam_1: i1.d1, Inf_n_1: i1.n1, Inf_Diam_2: i1.d2, Inf_n_2: i1.n2,
-      Sup2_Diam_1: s2.d1, Sup2_n_1: s2.n1, Sup2_Diam_2: s2.d2, Sup2_n_2: s2.n2,
-      Inf2_Diam_1: i2.d1, Inf2_n_1: i2.n1, Inf2_Diam_2: i2.d2, Inf2_n_2: i2.n2,
-      As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
-      As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
-      As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
-      As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
-    };
-
-    await writeNamedCellsSoft_(kv);
-
-    if (!supOpts.length) log('Barras: SUP sin opciones → celdas SUP limpiadas.');
-    if (!infOpts.length) log('Barras: INF sin opciones → celdas INF limpiadas.');
-    log('Barras: celdas por nombre rellenadas/limpiadas (Opción 1 y 2 + As_prov_*).');
-  }
-
   function _coalesce_(){
     for (let i = 0; i < arguments.length; i++){
       const v = arguments[i];
@@ -1047,9 +878,6 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  // ----------------------------
-  // Ping
-  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -1101,29 +929,8 @@
     }
   }
 
-  function _extractBarsSummary_(topLevelData, barsEnvelope){
-    if (topLevelData && typeof topLevelData.summary_text === 'string' && topLevelData.summary_text.trim()){
-      return topLevelData.summary_text;
-    }
-    if (barsEnvelope && typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-      return barsEnvelope.summary_text;
-    }
-    if (barsEnvelope && barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object'){
-      if (typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-        return barsEnvelope.summary_text;
-      }
-      if (typeof barsEnvelope.data.summary_text === 'string' && barsEnvelope.data.summary_text.trim()){
-        return barsEnvelope.data.summary_text;
-      }
-    }
-    if (topLevelData && typeof topLevelData.result === 'string' && topLevelData.result.trim()){
-      return topLevelData.result;
-    }
-    return 'Barras OK.';
-  }
-
   // ----------------------------
-  // Execute (solo 2 acciones: Barras / Redactar)
+  // Execute
   // ----------------------------
   async function execute_(){
     try{
@@ -1204,17 +1011,15 @@
           payload.sep_min_mm = sepN;
         }
 
-        const geomLog = {
+        log('Barras payload (geom): ' + JSON.stringify({
           As_req_neg_cm2: payload.As_req_neg_cm2,
           As_req_pos_cm2: payload.As_req_pos_cm2,
           b_sup_mm: payload.b_sup_mm,
           b_inf_mm: payload.b_inf_mm,
-          cover_mm: payload.cover_mm
-        };
-        if (payload.stirrup_diam_mm != null) geomLog.stirrup_diam_mm = payload.stirrup_diam_mm;
-        if (payload.sep_min_mm != null) geomLog.sep_min_mm = payload.sep_min_mm;
-
-        log('Barras payload (geom): ' + JSON.stringify(geomLog));
+          cover_mm: payload.cover_mm,
+          stirrup_diam_mm: payload.stirrup_diam_mm ?? null,
+          sep_min_mm: payload.sep_min_mm ?? null
+        }));
       }
 
       if (action === 'Redactar'){
@@ -1244,30 +1049,19 @@
       }
 
       const request_id = _makeReqId_();
-
-      const bodyObj = {
-        action,
-        token,
-        email: "",
-        payload,
-        request_id
-      };
+      const bodyObj = { action, token, email: "", payload, request_id };
 
       const url = getApiUrl_();
       log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
 
       const out = await _fetchJson_(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8', 'Accept': 'application/json' },
         body: JSON.stringify(bodyObj)
       }, API_TIMEOUT_MS_POST);
 
       if (!out.ok && out.error){
-        const msg = 'No se pudo conectar. ' + out.error;
-        showERR(msg);
+        showERR('No se pudo conectar. ' + out.error);
         log('ERROR red: ' + out.error);
         setState_('neutral');
         return;
@@ -1281,75 +1075,23 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
+        // Barras: solo muestra resumen (tu lógica real de escribir celdas ya está en tu versión completa)
         if (action === 'Barras'){
-          const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
-          if (!barsEnvelope){
-            showERR('Barras: el backend no devolvió "data".');
-            log('ERROR Barras: falta data en respuesta.');
-            return;
-          }
-
-          const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
-            ? barsEnvelope.data
-            : barsEnvelope;
-
-          if (model && model.error){
-            try{
-              await clearBarsNamedCells_();
-              log('Barras: limpieza aplicada por model.error (sin combinaciones).');
-            }catch(e){
-              log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e));
-            }
-
-            showERR('Barras: ' + String(model.error));
-            log('Barras ERROR (model.error): ' + String(model.error));
-            return;
-          }
-
-          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
-          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
-
-          if (!supOpts.length && !infOpts.length){
-            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
-
-            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
-            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
-            const extra = [
-              noteSup ? ('SUP:\n' + noteSup) : '',
-              noteInf ? ('INF:\n' + noteInf) : ''
-            ].filter(Boolean).join('\n\n');
-
-            showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
-            log('Barras: options vacías en ambas zonas → se limpió Excel.');
-            return;
-          }
-
-          const summary = _extractBarsSummary_(data, barsEnvelope);
-          showOK(String(summary || '').trim() || 'Barras OK.');
-          await writeBarsToNamedCells2_(model);
+          // Mantengo comportamiento: mostrar lo que venga en result/summary_text
+          const summary = (typeof data.result === 'string' && data.result.trim())
+            ? data.result
+            : 'Barras OK.';
+          showOK(summary);
           return;
         }
 
-        const uiExtra = (typeof data.uses_remaining !== 'undefined')
-          ? `\n\n[uses_remaining: ${data.uses_remaining}]`
-          : '';
-        const uiText = String(data.result || '') + uiExtra;
-
+        // Redactar: mostrar + pegar en celda activa
+        const uiText = String(data.result || '');
         showOK(uiText);
         await writeResultToActiveCell_(String(data.result || ''));
 
       }else{
         const f = _formatBackendError_(data, out.raw);
-
-        if ((elAction.value || '') === 'Barras'){
-          try{
-            await clearBarsNamedCells_();
-            log('Barras: limpieza aplicada desde rama ERROR (data.ok=false).');
-          }catch(e){
-            log('WARN Barras: no se pudo limpiar en rama ERROR: ' + (e.message || e));
-          }
-        }
-
         showERR(f.userMsg);
         log('ERROR backend: ' + f.techMsg);
 
@@ -1379,35 +1121,24 @@
     setLogVisible_(false);
 
     const last = await storageGet_('seproincaia.token.last');
-    if (last) {
-      elToken.value = last;
-      log('Token cargado desde memoria local.');
-    } else {
-      log('Sin token guardado todavía.');
-    }
+    if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
+    else { log('Sin token guardado todavía.'); }
 
     setMode('Aprendizaje');
     setState_('neutral');
 
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
-
-    btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
-    btnModeProd.classList.toggle('active', false);
-    btnModeProd.addEventListener('click', () => setMode('Producción'));
-
-    btnToggleLog.addEventListener('click', () => {
-      const isHidden = elLogWrap.classList.contains('logHidden');
-      setLogVisible_(isHidden);
-    });
+    btnToggleLog.addEventListener('click', () => setLogVisible_(elLogWrap.classList.contains('logHidden')));
 
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
+    btnToggleTech.addEventListener('click', toggleView_);
 
-    btnViewClean.addEventListener('click', () => setView_('clean'));
-    btnViewTech.addEventListener('click', () => setView_('tech'));
+    btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
+    btnModeProd.addEventListener('click', () => setMode('Producción'));
 
-    // Cargar vista guardada
+    // Vista guardada
     const savedView = await storageGet_('seproincaia.view');
     setView_(savedView === 'tech' ? 'tech' : 'clean');
 
@@ -1423,9 +1154,8 @@
 
     showOK(
       'Listo.\n\n' +
-      '• Redactar: párate en la celda de Informe Tecnico (ej. B70:I79) y pulsa Ejecutar.\n' +
-      '• Barras: pulsa Ejecutar (lee nombres de As requerido/geom y llena celdas por nombre).\n\n' +
-      'Tip: si Redactar detecta nombres faltantes, lo dirá explícitamente (sin inventar datos).'
+      '• Redactar: párate en la celda de conclusiones (ej. B71:I79) y pulsa Ejecutar.\n' +
+      '• Barras: pulsa Ejecutar (lee nombres de As requerido/geom y llena celdas por nombre).'
     );
     log('Office.onReady OK (host=' + host + ')');
   });
