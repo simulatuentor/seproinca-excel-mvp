@@ -184,6 +184,34 @@
     .ok{ color:#065f46; font-weight:900; }
     .bad{ color:#991b1b; font-weight:900; }
 
+    .modeRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .toggle{
+      display:flex;
+      gap:0;
+      border:1px solid var(--b);
+      border-radius: 999px;
+      overflow:hidden;
+      background:#fff;
+    }
+    .toggle button{
+      border:0;
+      background:transparent;
+      padding: 7px 10px;
+      font-weight:800;
+      cursor:pointer;
+      color:#334155;
+      font-size: 12.5px;
+    }
+    .toggle button.active{
+      background:#eaf2ff;
+      color:#0b3a64;
+    }
+
     .hint{
       font-size:12px;
       color: var(--muted);
@@ -270,7 +298,15 @@
 
   <div class="wrap">
     <div class="card">
-      <div class="label" style="margin-top:0;">Token</div>
+      <div class="modeRow">
+        <div style="font-weight:900;">Modo</div>
+        <div class="toggle" role="tablist" aria-label="Modo">
+          <button id="btnModeLearn" class="active" type="button">Aprendizaje</button>
+          <button id="btnModeProd" type="button">Producción</button>
+        </div>
+      </div>
+
+      <div class="label">Token</div>
       <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
       <div class="hint">Tip: el token se guarda localmente en tu Excel y queda editable por si deseas cambiarlo.</div>
 
@@ -303,7 +339,17 @@
         <div style="font-weight:900;">Resultado</div>
 
         <div class="rightActions">
-          <!-- Orden pedido: Copiar, Limpiar, Historial -->
+          <!-- Historial / Informe (toggle vista técnica) -->
+          <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
+            <!-- Documento + Lupa -->
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <!-- doc -->
+              <path fill="currentColor" d="M6 2h8l4 4v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
+              <!-- magnifier -->
+              <path fill="currentColor" d="M10.5 12.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4zm5.6 4.1-2.2-2.2a4.1 4.1 0 1 1 1.1-1.1l2.2 2.2a.8.8 0 0 1-1.1 1.1z"/>
+            </svg>
+          </button>
+
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
             <!-- Copy -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -315,18 +361,6 @@
             <!-- Trash -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/>
-            </svg>
-          </button>
-
-          <!-- Historial / Informe (toggle vista técnica) -->
-          <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
-            <!-- Documento + Lupa (lupa con stroke para que se vea sí o sí) -->
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <!-- doc -->
-              <path fill="currentColor" d="M6 2h8l4 4v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
-              <!-- magnifier (stroke) -->
-              <circle cx="10.5" cy="10.3" r="2.7" fill="none" stroke="currentColor" stroke-width="2"/>
-              <path d="M13.0 12.8L16.2 16.0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </button>
         </div>
@@ -373,6 +407,9 @@
 
   const btnExecute = $('#btnExecute');
   const btnPing = $('#btnPing');
+
+  const btnModeLearn = $('#btnModeLearn');
+  const btnModeProd  = $('#btnModeProd');
 
   const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
@@ -441,11 +478,19 @@
   }
 
   function setBusy(isBusy){
-    [btnExecute, btnPing, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
+    [btnExecute, btnPing, btnModeLearn, btnModeProd, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
     elAction.disabled = !!isBusy;
+  }
+
+  let currentMode = 'Aprendizaje';
+  function setMode(mode){
+    currentMode = mode === 'Producción' ? 'Producción' : 'Aprendizaje';
+    btnModeLearn.classList.toggle('active', currentMode === 'Aprendizaje');
+    btnModeProd.classList.toggle('active', currentMode === 'Producción');
+    log('Modo: ' + currentMode);
   }
 
   function setLogVisible_(visible){
@@ -713,12 +758,12 @@
         action,
         token,
         email: "",
-        payload: { instruction },   // ✅ MODO eliminado
+        payload: { instruction, mode: currentMode },
         request_id
       };
 
       const url = getApiUrl_();
-      log(`POST → ${action} [${request_id}]`);
+      log(`POST → ${action} (modo=${currentMode}) [${request_id}]`);
 
       const out = await _fetchJson_(url, {
         method: 'POST',
@@ -773,6 +818,7 @@
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
     else { log('Sin token guardado todavía.'); }
 
+    setMode('Aprendizaje');
     setState_('neutral');
 
     btnExecute.addEventListener('click', execute_);
@@ -782,6 +828,9 @@
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
     btnToggleTech.addEventListener('click', toggleView_);
+
+    btnModeLearn.addEventListener('click', () => setMode('Aprendizaje'));
+    btnModeProd.addEventListener('click', () => setMode('Producción'));
 
     const savedView = await storageGet_('seproincaia.view');
     setView_(savedView === 'tech' ? 'tech' : 'clean');
