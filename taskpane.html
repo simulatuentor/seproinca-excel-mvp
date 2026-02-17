@@ -36,7 +36,7 @@
       color: var(--ink);
     }
 
-    /* Header compacto (ya no repite nombre grande) */
+    /* Header (compacto, sin repetir nombre) */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -54,36 +54,8 @@
       margin:0;
     }
 
-    .row{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      border: 1px solid rgba(255,255,255,.35);
-      background: rgba(255,255,255,.12);
-      color: #fff;
-      user-select:none;
-    }
-    .dot{
-      width:10px;height:10px;border-radius:999px;
-      background:#9ca3af;
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
-    }
-    .dot.green{ background: #22c55e; }
-    .dot.red{ background: #ef4444; }
-    .dot.neutral{ background:#9ca3af; }
-
     .wrap{
-      padding: 12px 12px 80px; /* deja espacio por si luego pones footer */
+      padding: 12px 12px 18px;
       max-width: 520px;
     }
 
@@ -94,6 +66,13 @@
       box-shadow: var(--shadow);
       padding: 12px;
       margin-bottom: 12px;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
     }
 
     .label{
@@ -126,6 +105,27 @@
       background-repeat: no-repeat;
       padding-right: 34px;
     }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,.35);
+      background: rgba(255,255,255,.12);
+      color: #fff;
+      user-select:none;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:#9ca3af;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+    }
+    .dot.green{ background: #22c55e; }
+    .dot.red{ background: #ef4444; }
+    .dot.neutral{ background:#9ca3af; }
 
     .btn{
       width:100%;
@@ -198,7 +198,6 @@
       gap:8px;
     }
 
-    /* Icon buttons */
     .iconBtn{
       width:34px;
       height:34px;
@@ -281,7 +280,7 @@
         <div style="font-weight:900;">Resultado</div>
 
         <div class="rightActions">
-          <!-- Orden: Copiar, Limpiar, Historial -->
+          <!-- ORDEN: Copiar, Limpiar, Historial -->
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
@@ -295,7 +294,7 @@
           </button>
 
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
-            <!-- Doc + lupa: un solo icono “relleno” para que Excel SIEMPRE lo renderice -->
+            <!-- Doc + lupa (relleno, visible en Excel) -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 2h8l4 4v6.2a6.2 6.2 0 1 1-2 4.6V10h-6V4H6v18h6.2a6.2 6.2 0 0 1 0 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
               <path fill="currentColor" d="M17.2 14.2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm0-2a5.2 5.2 0 1 1-3.25 9.25l-1.9 1.9a1 1 0 0 1-1.4-1.4l1.9-1.9A5.2 5.2 0 0 1 17.2 12.2z"/>
@@ -327,7 +326,6 @@
 (function(){
   const $ = (s) => document.querySelector(s);
 
-  const elHostChip = $('#hostChip');
   const elHostDot  = $('#hostDot');
   const elHostText = $('#hostText');
 
@@ -438,6 +436,7 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
+    // ✅ si entra a TECH -> mostrar y desplegar log automáticamente
     if (v === 'tech') setLogVisible_(true);
     else setLogVisible_(false);
 
@@ -470,7 +469,6 @@
       document.execCommand('copy');
       document.body.removeChild(ta);
       log('Copiado al portapapeles (fallback).');
-
     }catch(e){
       log('WARN copiar: ' + (e.message || e));
     }
@@ -485,6 +483,9 @@
     }
   }
 
+  // =========================================================
+  // ✅ REDACTAR — pegar en celda activa SIN cambiar anchos (DOBLE RESTAURACIÓN)
+  // =========================================================
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -620,65 +621,335 @@
     }
   }
 
-  // ✅ Lee nombres definidos y envía al backend (arregla As_req_neg faltante)
-  async function collectNamedScalars_(){
-    const out = {};
-    if (typeof Excel === 'undefined' || !Excel.run) return out;
+  function _userMessageForError_(code, detail){
+    const c = String(code || '').trim().toLowerCase();
+    const MAP = {
+      'invalid_token': 'Token inválido. Verifica que lo hayas copiado correctamente.',
+      'missing_token': 'Pega tu token para continuar.',
+      'expired': 'Tu token está vencido. Solicita/renueva tu acceso para continuar.',
+      'no_uses_remaining': 'Se agotaron tus usos. Renueva tu plan para seguir utilizando SEPROINCA-IA.',
+      'token_email_mismatch': 'Este token no corresponde a tu usuario. Verifica que sea el token correcto.',
+      'invalid_action': 'Acción no válida. Selecciona una opción del menú.',
+      'missing_action': 'Selecciona una acción antes de ejecutar.',
+      'invalid_json': 'Solicitud inválida. Cierra y vuelve a abrir el complemento e intenta de nuevo.',
+      'server_error': 'Ocurrió un error interno. Intenta nuevamente.',
+      'auth_error': 'No se pudo validar tu acceso. Verifica tu token.'
+    };
+    if (MAP[c]) return MAP[c];
+    if (c.startsWith('timeout_')) return 'La solicitud tardó demasiado. Intenta nuevamente.';
 
-    await Excel.run(async (ctx) => {
-      const names = ctx.workbook.names;
-      names.load("items/name");
-      await ctx.sync();
+    const d = String(detail || '').trim();
+    if (d && d.length <= 160 && !/[<>{}]/.test(d)) return d;
 
-      const items = names.items || [];
-      // 1) intentamos leer cada name como range. Si es demasiado grande, lo omitimos.
-      for (const it of items){
-        const nm = it.name;
-        try{
-          const rng = ctx.workbook.names.getItem(nm).getRange();
-          rng.load(["rowCount","columnCount","values"]);
-        }catch(e){
-          // puede ser name que no es range -> omitir silencioso
-        }
-      }
-      await ctx.sync();
-
-      for (const it of items){
-        const nm = it.name;
-        try{
-          const rng = ctx.workbook.names.getItem(nm).getRange();
-          rng.load(["rowCount","columnCount","values"]);
-        }catch(e){
-          continue;
-        }
-      }
-      await ctx.sync();
-
-      for (const it of items){
-        const nm = it.name;
-        try{
-          const rng = ctx.workbook.names.getItem(nm).getRange();
-          const r = rng.rowCount;
-          const c = rng.columnCount;
-          // solo escalar o rangos pequeños
-          if (r * c <= 25){
-            const v = rng.values;
-            // si es 1x1, escala
-            if (r === 1 && c === 1){
-              out[nm] = v[0][0];
-            }else{
-              out[nm] = v;
-            }
-          }
-        }catch(e){
-          // ignore
-        }
-      }
-    });
-
-    return out;
+    return 'No fue posible completar la solicitud. Verifica tu token e intenta nuevamente.';
   }
 
+  function _formatBackendError_(data, fallbackRaw){
+    const code = (data && typeof data === 'object') ? data.error : '';
+    const det  = (data && typeof data === 'object') ? data.detail : '';
+    const userMsg = _userMessageForError_(code, det);
+
+    const http = (data && typeof data.http !== 'undefined') ? ` (http=${data.http})` : '';
+    const tech = (code ? (String(code) + http) : 'unknown_error');
+    const detailTxt = det ? (' | ' + String(det)) : '';
+
+    return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
+  }
+
+  // ----------------------------
+  // BARRAS helpers (idénticos al taskpane viejo)
+  // ----------------------------
+  function _toNumberOrNull_(v){
+    if (v === null || typeof v === 'undefined') return null;
+    const s = String(v).replace(',', '.').trim();
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  async function readNamedNumbers_(names){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const items = {};
+
+      for (const nm of names){
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            rangeToLoad[nm] = null;
+          }
+        }else{
+          rangeToLoad[nm] = null;
+        }
+      }
+      await ctx.sync();
+
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ res[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          res[nm] = _toNumberOrNull_(v);
+        }else{
+          res[nm] = _toNumberOrNull_(it.value);
+        }
+      }
+
+      return res;
+    });
+  }
+
+  async function readNamedValuesRaw_(names){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const items = {};
+      for (const nm of names){
+        const it = ctx.workbook.names.getItemOrNullObject(nm);
+        it.load(["name","type","value"]);
+        items[nm] = it;
+      }
+      await ctx.sync();
+
+      const rangeToLoad = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          try{
+            const rng = it.getRange();
+            rng.load(["values"]);
+            rangeToLoad[nm] = rng;
+          }catch(e){
+            rangeToLoad[nm] = null;
+          }
+        }else{
+          rangeToLoad[nm] = null;
+        }
+      }
+      await ctx.sync();
+
+      const res = {};
+      for (const nm of names){
+        const it = items[nm];
+        if (!it || it.isNullObject){ res[nm] = null; continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t === 'range'){
+          const rng = rangeToLoad[nm];
+          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
+          if (v === "" || typeof v === "undefined") res[nm] = null;
+          else res[nm] = v;
+        }else{
+          const v = it.value;
+          if (v === "" || typeof v === "undefined") res[nm] = null;
+          else res[nm] = v;
+        }
+      }
+      return res;
+    });
+  }
+
+  function _diamFractionFromMm_(mm){
+    const x = Number(mm);
+    if (!Number.isFinite(x)) return null;
+
+    const tol = 0.25;
+    const MAP = [
+      { mm: 6.35,  s: '1/4"' },
+      { mm: 7.94,  s: '5/16"' },
+      { mm: 9.53,  s: '3/8"' },
+      { mm: 12.70, s: '1/2"' },
+      { mm: 15.88, s: '5/8"' },
+      { mm: 19.05, s: '3/4"' },
+      { mm: 22.225, s: '7/8"' },
+      { mm: 25.40, s: '1"' },
+      { mm: 35.81, s: '1 3/8"' }
+    ];
+
+    let best = null;
+    for (const m of MAP){
+      const d = Math.abs(x - m.mm);
+      if (d <= tol && (!best || d < best.d)){
+        best = { d, s: m.s };
+      }
+    }
+    return best ? best.s : null;
+  }
+
+  function _fmtDiamCell_(diamMm){
+    const frac = _diamFractionFromMm_(diamMm);
+    if (frac) return `${frac}`;
+    const x = Number(diamMm);
+    if (!Number.isFinite(x)) return '';
+    return `${x.toFixed(2)} mm`;
+  }
+
+  async function writeNamedCellsSoft_(kv){
+    if (typeof Excel === 'undefined' || !Excel.run){
+      throw new Error('Excel API no disponible en este host.');
+    }
+
+    return await Excel.run(async (ctx) => {
+      const items = [];
+
+      for (const key of Object.keys(kv)){
+        const it = ctx.workbook.names.getItemOrNullObject(key);
+        it.load(["type"]);
+        items.push({ key, it });
+      }
+      await ctx.sync();
+
+      const skipped = [];
+      for (const item of items){
+        const it = item.it;
+        if (!it || it.isNullObject){ skipped.push(item.key); continue; }
+
+        const t = String(it.type || '').toLowerCase();
+        if (t !== 'range'){ skipped.push(item.key); continue; }
+
+        try{
+          const rng = it.getRange();
+          rng.values = [[kv[item.key]]];
+        }catch(e){
+          skipped.push(item.key);
+        }
+      }
+
+      await ctx.sync();
+
+      if (skipped.length){
+        log('WARN Barras: algunos nombres no se pudieron escribir (soft): ' + skipped.join(', '));
+      }
+    });
+  }
+
+  async function clearBarsNamedCells_(){
+    const kv = {
+      Sup_Diam_1: '', Sup_n_1: '', Sup_Diam_2: '', Sup_n_2: '',
+      Inf_Diam_1: '', Inf_n_1: '', Inf_Diam_2: '', Inf_n_2: '',
+      Sup2_Diam_1: '', Sup2_n_1: '', Sup2_Diam_2: '', Sup2_n_2: '',
+      Inf2_Diam_1: '', Inf2_n_1: '', Inf2_Diam_2: '', Inf2_n_2: '',
+      As_prov_sup1: '', As_prov_sup2: '', As_prov_inf1: '', As_prov_inf2: ''
+    };
+
+    await writeNamedCellsSoft_(kv);
+    log('Barras: limpieza forzada aplicada (todas las celdas).');
+  }
+
+  function _optToCells_(opt){
+    if (!opt) {
+      return { n1:'', d1:'', n2:'', d2:'', As:'' };
+    }
+    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
+    const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
+    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
+    const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '';
+
+    const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
+    return { n1, d1, n2, d2, As };
+  }
+
+  async function writeBarsToNamedCells2_(barsData){
+    const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
+    const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
+
+    const sup1 = supOpts[0] || null;
+    const sup2 = supOpts[1] || null;
+    const inf1 = infOpts[0] || null;
+    const inf2 = infOpts[1] || null;
+
+    const s1 = _optToCells_(sup1);
+    const s2 = _optToCells_(sup2);
+    const i1 = _optToCells_(inf1);
+    const i2 = _optToCells_(inf2);
+
+    const kv = {
+      Sup_Diam_1: s1.d1, Sup_n_1: s1.n1, Sup_Diam_2: s1.d2, Sup_n_2: s1.n2,
+      Inf_Diam_1: i1.d1, Inf_n_1: i1.n1, Inf_Diam_2: i1.d2, Inf_n_2: i1.n2,
+      Sup2_Diam_1: s2.d1, Sup2_n_1: s2.n1, Sup2_Diam_2: s2.d2, Sup2_n_2: s2.n2,
+      Inf2_Diam_1: i2.d1, Inf2_n_1: i2.n1, Inf2_Diam_2: i2.d2, Inf2_n_2: i2.n2,
+      As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
+      As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
+      As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
+      As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
+    };
+
+    await writeNamedCellsSoft_(kv);
+
+    if (!supOpts.length) log('Barras: SUP sin opciones → celdas SUP limpiadas.');
+    if (!infOpts.length) log('Barras: INF sin opciones → celdas INF limpiadas.');
+    log('Barras: celdas por nombre rellenadas/limpiadas (Opción 1 y 2 + As_prov_*).');
+  }
+
+  function _coalesce_(){
+    for (let i = 0; i < arguments.length; i++){
+      const v = arguments[i];
+      if (v !== null && typeof v !== 'undefined' && v !== '') return v;
+    }
+    return null;
+  }
+
+  function _cmToMm_(cm){
+    const x = Number(cm);
+    return Number.isFinite(x) ? x * 10.0 : null;
+  }
+
+  function _safeNum_(x){
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function _extractBarsSummary_(topLevelData, barsEnvelope){
+    if (topLevelData && typeof topLevelData.summary_text === 'string' && topLevelData.summary_text.trim()){
+      return topLevelData.summary_text;
+    }
+    if (barsEnvelope && typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
+      return barsEnvelope.summary_text;
+    }
+    if (barsEnvelope && barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object'){
+      if (typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
+        return barsEnvelope.summary_text;
+      }
+      if (typeof barsEnvelope.data.summary_text === 'string' && barsEnvelope.data.summary_text.trim()){
+        return barsEnvelope.data.summary_text;
+      }
+    }
+    if (topLevelData && typeof topLevelData.result === 'string' && topLevelData.result.trim()){
+      return topLevelData.result;
+    }
+    return 'Barras OK.';
+  }
+
+  // ----------------------------
+  // Ping
+  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -705,12 +976,13 @@
           log('Ping OK (version=' + (d.version || '—') + ')');
           setState_('neutral');
         }else{
-          showERR('Ping: error backend.');
-          log('Ping ERROR (backend).');
+          const f = _formatBackendError_(d, out.raw);
+          showERR(f.userMsg);
+          log('Ping ERROR (backend): ' + f.techMsg);
           setState_('neutral');
         }
       }else{
-        showERR('El servidor respondió de forma inesperada.');
+        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
         log('Ping ERROR: respuesta no JSON');
         setState_('neutral');
       }
@@ -724,6 +996,9 @@
     }
   }
 
+  // ----------------------------
+  // Execute (Barras / Redactar) — MISMA LÓGICA DEL VIEJO, SIN MODO
+  // ----------------------------
   async function execute_(){
     try{
       setBusy(true);
@@ -733,18 +1008,120 @@
 
       const action = elAction.value || 'Redactar';
       const instruction = (elInstr.value || '').trim();
-      const request_id = _makeReqId_();
 
-      // ✅ recolectar nombres definidos (escalares / pequeños)
-      const named = await collectNamedScalars_();
-      const namedCount = Object.keys(named).length;
-      log(`NamedRanges capturados: ${namedCount}`);
+      let payload = { instruction };
+
+      if (action === 'Barras'){
+        const vals = await readNamedNumbers_([
+          "As_req_neg_cm2", "As_req_pos_cm2",
+          "As_req_neg", "As_req_pos",
+          "As_req_sup", "As_req_inf",
+          "b_sup_mm", "b_inf_mm",
+          "bw_sup_mm", "bw_inf_mm",
+          "ancho_sup_mm", "ancho_inf_mm",
+          "bsup", "binf", "b",
+          "cover_mm", "rec_mm", "recubrimiento_mm",
+          "rec", "cover",
+          "stirrup_diam_mm", "diam_estribo_mm", "estribo_mm",
+          "sep_min_mm", "separacion_min_mm", "sep_min"
+        ]);
+
+        const AsNeg = _coalesce_(vals.As_req_neg_cm2, vals.As_req_neg, vals.As_req_sup);
+        const AsPos = _coalesce_(vals.As_req_pos_cm2, vals.As_req_pos, vals.As_req_inf);
+
+        if (AsNeg == null || AsPos == null){
+          throw new Error(
+            'Faltan nombres en Excel para acero requerido.\n' +
+            'Usa: As_req_neg_cm2 y As_req_pos_cm2 (recomendado)\n' +
+            'o compat: As_req_neg y As_req_pos.'
+          );
+        }
+
+        let bSupMm = _coalesce_(vals.b_sup_mm, vals.bw_sup_mm, vals.ancho_sup_mm);
+        let bInfMm = _coalesce_(vals.b_inf_mm, vals.bw_inf_mm, vals.ancho_inf_mm);
+
+        const bsup_cm = vals.bsup;
+        const binf_cm = vals.binf;
+        const b_cm    = vals.b;
+
+        if (bSupMm == null && bsup_cm != null) bSupMm = _cmToMm_(bsup_cm);
+        if (bInfMm == null && binf_cm != null) bInfMm = _cmToMm_(binf_cm);
+
+        if (bSupMm == null && b_cm != null) bSupMm = _cmToMm_(b_cm);
+        if (bInfMm == null && b_cm != null) bInfMm = _cmToMm_(b_cm);
+
+        let coverMm = _coalesce_(vals.cover_mm, vals.rec_mm, vals.recubrimiento_mm);
+        const rec_cm = _coalesce_(vals.rec, vals.cover);
+        if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
+
+        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
+        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
+
+        payload = {
+          kind: "fundamentos_barras_v1",
+          As_req_neg_cm2: Number(AsNeg),
+          As_req_pos_cm2: Number(AsPos),
+          b_sup_mm: _safeNum_(bSupMm),
+          b_inf_mm: _safeNum_(bInfMm),
+          cover_mm: _safeNum_(coverMm),
+          instruction
+        };
+
+        const stirrupN = _safeNum_(stirrupMm);
+        if (Number.isFinite(stirrupN) && stirrupN > 0){
+          payload.stirrup_diam_mm = stirrupN;
+        }
+
+        const sepN = _safeNum_(sepMinMm);
+        if (Number.isFinite(sepN) && sepN > 0){
+          payload.sep_min_mm = sepN;
+        }
+
+        const geomLog = {
+          As_req_neg_cm2: payload.As_req_neg_cm2,
+          As_req_pos_cm2: payload.As_req_pos_cm2,
+          b_sup_mm: payload.b_sup_mm,
+          b_inf_mm: payload.b_inf_mm,
+          cover_mm: payload.cover_mm
+        };
+        if (payload.stirrup_diam_mm != null) geomLog.stirrup_diam_mm = payload.stirrup_diam_mm;
+        if (payload.sep_min_mm != null) geomLog.sep_min_mm = payload.sep_min_mm;
+
+        log('Barras payload (geom): ' + JSON.stringify(geomLog));
+      }
+
+      if (action === 'Redactar'){
+        const NAMES_RED = [
+          "bsup","binf","t","h","rec","d","f_c","Fy","phi","Mu_pos","Mu_neg","As_req_pos","As_req_neg",
+          "Sup_Diam_1","Sup_Diam_2","Sup_n_1","Sup_n_2","As_prov_sup1","Sup2_Diam_1","Sup2_Diam_2","Sup2_n_1","Sup2_n_2","As_prov_sup2",
+          "Inf_Diam_1","Inf_Diam_2","Inf_n_1","Inf_n_2","As_prov_inf1","Inf2_Diam_1","Inf2_Diam_2","Inf2_n_1","Inf2_n_2","As_prov_inf2"
+        ];
+
+        const data = await readNamedValuesRaw_(NAMES_RED);
+
+        const missing = [];
+        for (const k of NAMES_RED){
+          if (data[k] === null || typeof data[k] === 'undefined') missing.push(k);
+        }
+
+        payload = {
+          kind: "fundamentos_redactar_nervioT_v1",
+          sheet_expected: "Nervio Seccion T",
+          instruction,
+          data,
+          missing
+        };
+
+        log('Redactar: nombres leídos=' + (NAMES_RED.length) + ' | faltantes=' + missing.length + (missing.length ? (' [' + missing.join(', ') + ']') : ''));
+      }
+
+      const request_id = _makeReqId_();
 
       const bodyObj = {
         action,
         token,
         email: "",
-        payload: Object.assign({ instruction }, named),
+        payload,
         request_id
       };
 
@@ -753,7 +1130,10 @@
 
       const out = await _fetchJson_(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8', 'Accept': 'application/json' },
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(bodyObj)
       }, API_TIMEOUT_MS_POST);
 
@@ -768,18 +1148,66 @@
 
       if (data && data.ok){
         log('OK: respuesta recibida');
-        setState_('active', (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined);
+        const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_('active', uses);
 
-        const uiText = String(data.result || '');
-        showOK(uiText);
+        if (action === 'Barras'){
+          const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
+          if (!barsEnvelope){
+            showERR('Barras: el backend no devolvió "data".');
+            log('ERROR Barras: falta data en respuesta.');
+            return;
+          }
 
-        if (action === 'Redactar'){
-          await writeResultToActiveCell_(String(data.result || ''));
+          const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
+            ? barsEnvelope.data
+            : barsEnvelope;
+
+          if (model && model.error){
+            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e)); }
+            showERR('Barras: ' + String(model.error));
+            log('Barras ERROR (model.error): ' + String(model.error));
+            return;
+          }
+
+          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
+          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
+
+          if (!supOpts.length && !infOpts.length){
+            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
+            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
+            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
+            const extra = [noteSup ? ('SUP:\n' + noteSup) : '', noteInf ? ('INF:\n' + noteInf) : ''].filter(Boolean).join('\n\n');
+
+            showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
+            log('Barras: options vacías en ambas zonas → se limpió Excel.');
+            return;
+          }
+
+          const summary = _extractBarsSummary_(data, barsEnvelope);
+          showOK(String(summary || '').trim() || 'Barras OK.');
+          await writeBarsToNamedCells2_(model);
+          return;
         }
+
+        // Redactar
+        showOK(String(data.result || ''));
+        await writeResultToActiveCell_(String(data.result || ''));
+        return;
+
       }else{
-        showERR('No fue posible completar la solicitud. Verifica tu token e intenta nuevamente.');
-        log('ERROR backend.');
-        setState_('invalid', (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined);
+        const f = _formatBackendError_(data, out.raw);
+
+        if ((elAction.value || '') === 'Barras'){
+          try{ await clearBarsNamedCells_(); log('Barras: limpieza aplicada desde rama ERROR (data.ok=false).'); }
+          catch(e){ log('WARN Barras: no se pudo limpiar en rama ERROR: ' + (e.message || e)); }
+        }
+
+        showERR(f.userMsg);
+        log('ERROR backend: ' + f.techMsg);
+
+        const usesErr = (data && typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
+        setState_('invalid', usesErr);
       }
 
     }catch(e){
@@ -791,6 +1219,9 @@
     }
   }
 
+  // ----------------------------
+  // Office.onReady
+  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
