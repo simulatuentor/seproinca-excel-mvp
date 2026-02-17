@@ -57,6 +57,8 @@
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
+      /* ✅ evita que el footer tape contenido */
+      padding-bottom: 56px;
     }
 
     .card{
@@ -228,6 +230,48 @@
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
+
+    /* =========================================================
+       ✅ Footer brand bar (franja azul inferior compacta)
+       ========================================================= */
+    .footerBar{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      background: linear-gradient(180deg, var(--blue1), var(--blue2));
+      color: rgba(255,255,255,.94);
+      box-shadow: 0 -6px 18px rgba(0,0,0,.14);
+      z-index: 6;
+    }
+    .footerLeft{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.2px;
+    }
+    .footerLogo{
+      width:16px;
+      height:16px;
+      border:2px solid rgba(255,255,255,.9);
+      border-left-color: transparent;
+      transform: rotate(45deg);
+      border-radius: 4px;
+      opacity:.95;
+    }
+    .footerRight{
+      font-size:12px;
+      opacity:.92;
+      font-weight:700;
+      white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -320,6 +364,15 @@
         <div id="log" class="log"></div>
       </div>
     </div>
+  </div>
+
+  <!-- ✅ Footer fijo (branding + versión) -->
+  <div class="footerBar" aria-hidden="true">
+    <div class="footerLeft">
+      <div class="footerLogo"></div>
+      <div>Seproinca</div>
+    </div>
+    <div class="footerRight">SEPROINCA-IA · v1.0.0</div>
   </div>
 
 <script>
@@ -436,7 +489,6 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    // ✅ si entra a TECH -> mostrar y desplegar log automáticamente
     if (v === 'tech') setLogVisible_(true);
     else setLogVisible_(false);
 
