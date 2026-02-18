@@ -672,7 +672,7 @@
       return;
     }
 
-    const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses}` : '';
+    const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses} usos` : '';
     elStateText.textContent = (s === 'active' ? `OK${u}` : `Token${u}`);
   }
 
