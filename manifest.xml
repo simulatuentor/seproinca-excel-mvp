@@ -5,14 +5,13 @@
            xsi:type="TaskPaneApp">
 
   <Id>7b5f3a8a-8f7a-4f3d-9a4d-9b1111111111</Id>
-  <Version>1.0.0.9</Version>
+  <Version>1.0.0.10</Version>
   <ProviderName>Seproinca</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
 
-  <DisplayName DefaultValue="Seproinca AI (MVP)"/>
-  <Description DefaultValue="MVP: panel de prueba Hola Seproinca."/>
+  <DisplayName DefaultValue="SEPROINCA | IA"/>
+  <Description DefaultValue="Asistente técnico para análisis y diseño práctico en concreto armado."/>
 
-  <!-- ✅ Agrega iconos “core” a nivel superior -->
   <IconUrl DefaultValue="https://appsforoffice.microsoft.com/lib/1/hosted/images/office_icon.png"/>
   <HighResolutionIconUrl DefaultValue="https://appsforoffice.microsoft.com/lib/1/hosted/images/office_icon.png"/>
 
