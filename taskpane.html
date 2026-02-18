@@ -54,6 +54,33 @@
       margin:0;
     }
 
+    /* ✅ Header: título + estado en la misma línea, altura estable */
+    .topLine{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:nowrap;
+      min-height: 20px; /* evita saltos */
+    }
+    .hdrSep{
+      opacity:.75;
+      font-weight:900;
+      line-height:1;
+    }
+    .chipState{
+      padding: 6px 10px;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    #stateText{
+      display:inline-block;
+      max-width: 240px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+    #hdrTitle{ white-space:nowrap; }
+
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
@@ -277,17 +304,25 @@
 
 <body>
   <div class="header">
-    <p class="sub">Asistente Técnico — Concreto Armado</p>
+    <!-- ✅ Título + estado en una sola línea -->
+    <div class="topLine">
+      <p class="sub" id="hdrTitle">Asistente Técnico</p>
+      <div class="hdrSep">|</div>
+
+      <div class="chip chipState" id="tokenStateChip">
+        <span class="dot neutral" id="stateDot"></span>
+        <span id="stateText">Listo</span>
+      </div>
+    </div>
+
     <div class="row" style="margin-top:10px; justify-content:space-between;">
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
         <span id="hostText">host: ?</span>
       </div>
 
-      <div class="chip" id="tokenStateChip">
-        <span class="dot neutral" id="stateDot"></span>
-        <span id="stateText">Estado: a la espera de petición</span>
-      </div>
+      <!-- (opcional) espacio para algo a la derecha sin romper layout -->
+      <div style="height:1px;"></div>
     </div>
   </div>
 
@@ -627,17 +662,18 @@
     return t;
   }
 
+  /* ✅ Misma lógica actual (neutral/active/invalid), solo texto breve y en la línea del título */
   function setState_(state, uses){
     const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
     elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
 
     if (s === 'neutral'){
-      elStateText.textContent = 'Estado: a la espera de petición';
+      elStateText.textContent = 'Listo';
       return;
     }
 
-    const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
-    elStateText.textContent = `Estado: ${s === 'active' ? 'Activo' : 'No válido'}${u}`;
+    const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses}` : '';
+    elStateText.textContent = (s === 'active' ? `OK${u}` : `Token${u}`);
   }
 
   function _makeReqId_(){
