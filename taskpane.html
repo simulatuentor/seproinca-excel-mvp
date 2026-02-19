@@ -40,7 +40,7 @@
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
-      padding: 12px 14px 10px;
+      padding: 8px 14px 6px; /* ✅ más compacto (antes 12px 14px 10px) */
       position: sticky;
       top:0;
       z-index: 5;
@@ -84,7 +84,7 @@
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
-      padding-bottom: 14px;
+      padding-bottom: 56px; /* footer */
     }
 
     .card{
@@ -120,6 +120,10 @@
       background:#fff;
     }
     textarea{ min-height: 82px; resize: vertical; }
+
+    /* ✅ Reducir un toque el tamaño SOLO en los campos señalados */
+    #actionSelect{ font-size:13px; }
+    #instruction{ font-size:13px; }
 
     select{
       appearance: none;
@@ -178,7 +182,7 @@
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
 
-    /* fila Token + Ejecutar */
+    /* ✅ fila Token + Ejecutar */
     .tokenExecRow{
       display:flex;
       align-items:flex-end;
@@ -205,18 +209,15 @@
       padding: 9px 10px;
     }
 
-    /* ✅ Ping compacto */
     .btnGhost{
       border:1px solid var(--b);
       background:#fff;
       color:#111827;
       font-weight:700;
       border-radius: 14px;
-      padding: 7px 9px;
+      padding: 10px 12px;
       cursor:pointer;
       width:100%;
-      font-size: 12px;
-      line-height: 1.1;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
 
@@ -248,39 +249,7 @@
       align-items:center;
       gap:10px;
     }
-
-    /* ✅ Header de Log: hostChip a la izquierda y título "Log" a la derecha */
-    .logHeaderLeft{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width: 0;
-    }
-    .logTitle{
-      font-weight:900;
-      font-size: 12px;
-      letter-spacing: .1px;
-      white-space: nowrap;
-    }
-
-    /* ✅ Host chip en tarjeta Log */
-    .hostChipInline{
-      background: #0b3a64;
-      border: 1px solid rgba(255,255,255,.18);
-      color: #fff;
-      box-shadow: none;
-      font-size: 11px;
-      padding: 5px 8px;
-      max-width: 220px;
-    }
-    .hostChipInline #hostText{
-      max-width: 180px;
-      overflow:hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      display:inline-block;
-      vertical-align: middle;
-    }
+    .logHidden{ display:none; }
 
     .resultHeader{
       display:flex;
@@ -323,12 +292,16 @@
     /* Vista Limpia */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
+    body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
 
-    /* Footer NO fijo */
+    /* Footer */
     .footerBar{
-      position: static;
-      height: 34px;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 38px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -336,22 +309,28 @@
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color: rgba(255,255,255,.94);
       box-shadow: 0 -6px 18px rgba(0,0,0,.14);
-      margin: 10px 0 0;
+      z-index: 6;
     }
     .footerLeft{
       display:flex;
       align-items:center;
       gap:8px;
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.2px;
     }
-    .footerLogoImg{
-      height: 16px;
-      width: auto;
-      display:block;
-      opacity:.98;
+    .footerLogo{
+      width:16px;
+      height:16px;
+      border:2px solid rgba(255,255,255,.9);
+      border-left-color: transparent;
+      transform: rotate(45deg);
+      border-radius: 4px;
+      opacity:.95;
     }
     .footerRight{
-      font-size: 11px;
-      opacity:.90;
+      font-size:12px;
+      opacity:.92;
       font-weight:700;
       white-space: nowrap;
     }
@@ -370,7 +349,6 @@
       </div>
     </div>
 
-    <!-- hostChip seguirá existiendo, pero en vista técnica lo movemos al Log (por JS) -->
     <div class="row" style="margin-top:10px; justify-content:space-between;">
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
@@ -382,6 +360,7 @@
 
   <div class="wrap">
 
+    <!-- ✅ 1) ACCIÓN primero -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
@@ -394,6 +373,7 @@
       <div class="label">Instrucción (opcional)</div>
       <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
+      <!-- ✅ 2) Token debajo, en la MISMA LÍNEA del botón Ejecutar -->
       <div class="tokenExecRow" style="margin-top:10px;">
         <div class="tokenCol">
           <div class="label" style="margin:0 0 6px;">Token</div>
@@ -430,9 +410,12 @@
           </button>
 
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
+            <!-- ✅ Hoja + ojito (ojito abajo-derecha superpuesto) -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor" d="M6 2h8l4 4v6.2a6.2 6.2 0 1 1-2 4.6V10h-6V4H6v18h6.2a6.2 6.2 0 0 1 0 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
-              <path fill="currentColor" d="M17.2 14.2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm0-2a5.2 5.2 0 1 1-3.25 9.25l-1.9 1.9a1 1 0 0 1-1.4-1.4l1.9-1.9A5.2 5.2 0 0 1 17.2 12.2z"/>
+              <!-- hoja -->
+              <path fill="currentColor" d="M6 2h8l4 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
+              <!-- ojito (abajo-derecha) -->
+              <path fill="currentColor" d="M16.6 14.9c-2.3 0-4.2 1.4-5 3.4.8 2 2.7 3.4 5 3.4s4.2-1.4 5-3.4c-.8-2-2.7-3.4-5-3.4zm0 5.7a2.3 2.3 0 1 1 0-4.6 2.3 2.3 0 0 1 0 4.6zm0-1.3a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
             </svg>
           </button>
         </div>
@@ -441,32 +424,27 @@
       <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
     </div>
 
-    <div class="card cardLog" id="cardLog">
+    <div class="card cardLog">
       <div class="collapseHeader">
-        <!-- IZQUIERDA: hostChip + Log -->
-        <div class="logHeaderLeft" id="logHeaderLeft">
-          <!-- hostChip se insertará aquí en vista técnica (por JS) -->
-          <div class="logTitle">Log</div>
-        </div>
-
-        <!-- DERECHA: Solo Ping -->
+        <div style="font-weight:900;">Log</div>
         <div class="row" style="gap:8px;">
-          <button class="btnGhost" id="btnPing" type="button" style="width:auto;">Ping</button>
+          <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
+          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto; padding:8px 10px;">Ver log</button>
         </div>
       </div>
 
       <div style="height:10px"></div>
-      <!-- ✅ Log SIEMPRE visible en vista técnica -->
-      <div id="log" class="log"></div>
+      <div id="logWrap" class="logHidden">
+        <div id="log" class="log"></div>
+      </div>
     </div>
 
   </div>
 
   <div class="footerBar" aria-hidden="true">
     <div class="footerLeft">
-      <img class="footerLogoImg"
-           src="https://raw.githubusercontent.com/simulatuentor/seproinca-excel-mvp/main/Logo-Seproinca-Blanco.png"
-           alt="Seproinca" />
+      <div class="footerLogo"></div>
+      <div>Seproinca</div>
     </div>
     <div class="footerRight">SEPROINCA-IA · v1.0.0</div>
   </div>
@@ -493,12 +471,12 @@
   const btnExecute = $('#btnExecute');
   const btnPing = $('#btnPing');
 
+  const btnToggleLog = $('#btnToggleLog');
+  const elLogWrap = $('#logWrap');
+
   const btnCopyResult  = $('#btnCopyResult');
   const btnClearResult = $('#btnClearResult');
   const btnToggleTech  = $('#btnToggleTech');
-
-  const elHostChip = $('#hostChip');
-  const elLogHeaderLeft = $('#logHeaderLeft');
 
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
@@ -571,7 +549,7 @@
   }
 
   function setBusy(isBusy){
-    [btnExecute, btnPing, btnCopyResult, btnClearResult, btnToggleTech]
+    [btnExecute, btnPing, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
@@ -580,28 +558,14 @@
     setStateBusy_(!!isBusy);
   }
 
-  function isTech_(){
-    return !document.body.classList.contains('viewClean');
+  function setLogVisible_(visible){
+    const v = !!visible;
+    elLogWrap.classList.toggle('logHidden', !v);
+    btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
-  /* mover hostChip al header de Log en vista técnica */
-  function placeHostChip_(where){
-    try{
-      if (!elHostChip) return;
-      elHostChip.classList.remove('hostChipInline');
-
-      if (where === 'log'){
-        elHostChip.classList.add('hostChipInline');
-        if (elLogHeaderLeft && !elLogHeaderLeft.contains(elHostChip)){
-          elLogHeaderLeft.insertBefore(elHostChip, elLogHeaderLeft.firstChild);
-        }
-      }else{
-        const headerRow = document.querySelector('.header .row');
-        if (headerRow && !headerRow.contains(elHostChip)){
-          headerRow.insertBefore(elHostChip, headerRow.firstChild);
-        }
-      }
-    }catch(e){}
+  function isTech_(){
+    return !document.body.classList.contains('viewClean');
   }
 
   function setView_(view){
@@ -612,8 +576,8 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    if (v === 'tech') placeHostChip_('log');
-    else placeHostChip_('header');
+    if (v === 'tech') setLogVisible_(true);
+    else setLogVisible_(false);
 
     storageSet_('seproincaia.view', v).catch(()=>{});
     log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
@@ -1393,6 +1357,7 @@
     elHostDot.className = 'dot green';
 
     elApiUrl.value = DEFAULT_API_URL;
+    setLogVisible_(false);
 
     const last = await storageGet_('seproincaia.token.last');
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
@@ -1402,6 +1367,7 @@
 
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
+    btnToggleLog.addEventListener('click', () => setLogVisible_(elLogWrap.classList.contains('logHidden')));
 
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
