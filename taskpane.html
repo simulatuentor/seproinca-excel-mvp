@@ -156,6 +156,19 @@
     .dot.red{ background: #ef4444; }
     .dot.neutral{ background:#9ca3af; }
 
+    /* ✅ CAMBIO: azul para "En curso" */
+    .dot.blue{ background: #3b82f6; }
+
+    /* ✅ CAMBIO: pulso suave cuando está en curso */
+    @keyframes pulseSoft {
+      0%   { transform: scale(1);   box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,.35); }
+      50%  { transform: scale(1.06); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 6px rgba(59,130,246,0); }
+      100% { transform: scale(1);   box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,0); }
+    }
+    .dot.pulse{
+      animation: pulseSoft 1.2s ease-in-out infinite;
+    }
+
     .btn{
       width:100%;
       border:0;
@@ -321,7 +334,6 @@
         <span id="hostText">host: ?</span>
       </div>
 
-      <!-- (opcional) espacio para algo a la derecha sin romper layout -->
       <div style="height:1px;"></div>
     </div>
   </div>
@@ -329,7 +341,7 @@
   <div class="wrap">
     <div class="card">
       <div class="label" style="margin-top:0;">Token</div>
-      <input id="token" type="text" placeholder="Pega aquí tu token" />
+      <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
       <input id="apiUrl" type="text" style="display:none" />
     </div>
 
@@ -359,7 +371,6 @@
         <div style="font-weight:900;">Resultado</div>
 
         <div class="rightActions">
-          <!-- ORDEN: Copiar, Limpiar, Historial -->
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
@@ -373,7 +384,6 @@
           </button>
 
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
-            <!-- Doc + lupa (relleno, visible en Excel) -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 2h8l4 4v6.2a6.2 6.2 0 1 1-2 4.6V10h-6V4H6v18h6.2a6.2 6.2 0 0 1 0 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
               <path fill="currentColor" d="M17.2 14.2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm0-2a5.2 5.2 0 1 1-3.25 9.25l-1.9 1.9a1 1 0 0 1-1.4-1.4l1.9-1.9A5.2 5.2 0 0 1 17.2 12.2z"/>
@@ -401,7 +411,6 @@
     </div>
   </div>
 
-  <!-- ✅ Footer fijo (branding + versión) -->
   <div class="footerBar" aria-hidden="true">
     <div class="footerLeft">
       <div class="footerLogo"></div>
@@ -445,6 +454,9 @@
   const API_TIMEOUT_MS_POST = 35000;
 
   const LOGP = "[SEPROINCA-IA][Excel] ";
+
+  /* ✅ CAMBIO: estado recordado para restaurarlo al salir de "En curso" */
+  let _lastState = { state: 'neutral', uses: undefined };
 
   function storageAvailable_(){
     try{
@@ -498,12 +510,26 @@
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
+  /* ✅ CAMBIO: modo "En curso" con punto azul pulsando */
+  function setStateBusy_(isBusy){
+    if (!!isBusy){
+      elStateDot.className = 'dot blue pulse';
+      elStateText.textContent = 'En curso';
+      return;
+    }
+    // restaurar último estado real
+    setState_(_lastState.state, _lastState.uses, /*save*/false);
+  }
+
   function setBusy(isBusy){
     [btnExecute, btnPing, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
     elAction.disabled = !!isBusy;
+
+    /* ✅ CAMBIO */
+    setStateBusy_(!!isBusy);
   }
 
   function setLogVisible_(visible){
@@ -662,9 +688,21 @@
     return t;
   }
 
-  /* ✅ Misma lógica actual (neutral/active/invalid), solo texto breve y en la línea del título */
-  function setState_(state, uses){
+  /* ✅ CAMBIOS:
+     - invalid => "Verificar Token"
+     - active  => "OK · 250 usos" (con palabra usos)
+     - neutral => "Listo"
+  */
+  function setState_(state, uses, save=true){
     const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
+
+    if (save){
+      _lastState = { state: s, uses: uses };
+    }
+
+    // si justo está "en curso", no sobre-escribir (setBusy controla eso)
+    // (solo por seguridad: si alguien llama setState_ durante busy)
+    // Nota: aquí no sabemos busy, así que lo dejamos simple y estable.
     elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
 
     if (s === 'neutral'){
@@ -673,7 +711,12 @@
     }
 
     const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses} usos` : '';
-    elStateText.textContent = (s === 'active' ? `OK${u}` : `Token${u}`);
+    if (s === 'active'){
+      elStateText.textContent = `OK${u}`;
+    }else{
+      // invalid
+      elStateText.textContent = `Verificar Token${u}`;
+    }
   }
 
   function _makeReqId_(){
@@ -1067,7 +1110,7 @@
           const f = _formatBackendError_(d, out.raw);
           showERR(f.userMsg);
           log('Ping ERROR (backend): ' + f.techMsg);
-          setState_('neutral');
+          setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
         }
       }else{
         showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
@@ -1278,7 +1321,6 @@
           return;
         }
 
-        // Redactar
         showOK(String(data.result || ''));
         await writeResultToActiveCell_(String(data.result || ''));
         return;
