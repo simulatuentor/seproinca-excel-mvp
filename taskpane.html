@@ -84,7 +84,7 @@
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
-      padding-bottom: 14px; /* ✅ ya no hace falta reservar 56px (footer no es fijo) */
+      padding-bottom: 14px;
     }
 
     .card{
@@ -178,7 +178,7 @@
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
 
-    /* ✅ NUEVO: fila Token + Ejecutar */
+    /* fila Token + Ejecutar */
     .tokenExecRow{
       display:flex;
       align-items:flex-end;
@@ -205,15 +205,18 @@
       padding: 9px 10px;
     }
 
+    /* ✅ Botones pequeños para Log: Ping / Ocultar log */
     .btnGhost{
       border:1px solid var(--b);
       background:#fff;
       color:#111827;
       font-weight:700;
       border-radius: 14px;
-      padding: 10px 12px;
+      padding: 7px 9px;      /* ✅ más compacto */
       cursor:pointer;
       width:100%;
+      font-size: 12px;       /* ✅ más pequeño */
+      line-height: 1.1;
     }
     .btnGhost:disabled{ opacity:.6; cursor:not-allowed; }
 
@@ -246,6 +249,39 @@
       gap:10px;
     }
     .logHidden{ display:none; }
+
+    /* ✅ Nuevo header de Log: hostChip a la izquierda y título "Log" a la derecha */
+    .logHeaderLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+    }
+    .logTitle{
+      font-weight:900;
+      font-size: 12px; /* ✅ más pequeño */
+      letter-spacing: .1px;
+      white-space: nowrap;
+    }
+
+    /* ✅ Host chip en tarjeta Log (se verá en vista técnica) */
+    .hostChipInline{
+      background: #0b3a64; /* tono azul sobrio */
+      border: 1px solid rgba(255,255,255,.18);
+      color: #fff;
+      box-shadow: none;
+      font-size: 11px;   /* ✅ más pequeño */
+      padding: 5px 8px;  /* ✅ más compacto */
+      max-width: 220px;
+    }
+    .hostChipInline #hostText{
+      max-width: 180px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display:inline-block;
+      vertical-align: middle;
+    }
 
     .resultHeader{
       display:flex;
@@ -291,11 +327,9 @@
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
 
-    /* =========================================================
-       ✅ Footer NO fijo (solo visible al hacer scroll)
-       ========================================================= */
+    /* Footer NO fijo */
     .footerBar{
-      position: static; /* ✅ clave */
+      position: static;
       height: 34px;
       display: flex;
       align-items: center;
@@ -312,13 +346,13 @@
       gap:8px;
     }
     .footerLogoImg{
-      height: 16px;   /* ✅ si quieres más pequeño: 14px */
+      height: 16px;
       width: auto;
       display:block;
       opacity:.98;
     }
     .footerRight{
-      font-size: 11px; /* ✅ más pequeño */
+      font-size: 11px;
       opacity:.90;
       font-weight:700;
       white-space: nowrap;
@@ -338,6 +372,7 @@
       </div>
     </div>
 
+    <!-- ✅ hostChip ya NO se muestra aquí en vista técnica; lo movemos al header de Log via JS -->
     <div class="row" style="margin-top:10px; justify-content:space-between;">
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
@@ -349,7 +384,6 @@
 
   <div class="wrap">
 
-    <!-- ✅ 1) ACCIÓN primero -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
@@ -362,7 +396,6 @@
       <div class="label">Instrucción (opcional)</div>
       <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
-      <!-- ✅ 2) Token debajo, en la MISMA LÍNEA del botón Ejecutar -->
       <div class="tokenExecRow" style="margin-top:10px;">
         <div class="tokenCol">
           <div class="label" style="margin:0 0 6px;">Token</div>
@@ -410,12 +443,18 @@
       <div id="result" class="log">Listo. Pega tu token y elige Redactar o Barras.</div>
     </div>
 
-    <div class="card cardLog">
+    <div class="card cardLog" id="cardLog">
       <div class="collapseHeader">
-        <div style="font-weight:900;">Log</div>
+        <!-- ✅ IZQUIERDA: hostChip + Log -->
+        <div class="logHeaderLeft" id="logHeaderLeft">
+          <!-- hostChip se insertará aquí en vista técnica (por JS) -->
+          <div class="logTitle">Log</div>
+        </div>
+
+        <!-- ✅ DERECHA: Botones -->
         <div class="row" style="gap:8px;">
-          <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
-          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto; padding:8px 10px;">Ver log</button>
+          <button class="btnGhost" id="btnPing" type="button" style="width:auto;">Ping</button>
+          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto;">Ver log</button>
         </div>
       </div>
 
@@ -427,7 +466,6 @@
 
   </div>
 
-  <!-- ✅ Footer NO fijo + logo por URL + sin texto “Seproinca” -->
   <div class="footerBar" aria-hidden="true">
     <div class="footerLeft">
       <img class="footerLogoImg"
@@ -465,6 +503,9 @@
   const btnCopyResult  = $('#btnCopyResult');
   const btnClearResult = $('#btnClearResult');
   const btnToggleTech  = $('#btnToggleTech');
+
+  const elHostChip = $('#hostChip');
+  const elLogHeaderLeft = $('#logHeaderLeft');
 
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbwjODmMUtcK31iWBTUbEJcz8LnKZ8qUoCzBx7Sv16N8-jSSbAntQ8csTOicsozAfqRHcQ/exec";
 
@@ -556,6 +597,27 @@
     return !document.body.classList.contains('viewClean');
   }
 
+  /* ✅ NUEVO: mover hostChip al header de Log en vista técnica */
+  function placeHostChip_(where){
+    try{
+      if (!elHostChip) return;
+      elHostChip.classList.remove('hostChipInline');
+
+      if (where === 'log'){
+        elHostChip.classList.add('hostChipInline');
+        if (elLogHeaderLeft && !elLogHeaderLeft.contains(elHostChip)){
+          elLogHeaderLeft.insertBefore(elHostChip, elLogHeaderLeft.firstChild);
+        }
+      }else{
+        // fallback: vuelve a su contenedor original (header)
+        const headerRow = document.querySelector('.header .row');
+        if (headerRow && !headerRow.contains(elHostChip)){
+          headerRow.insertBefore(elHostChip, headerRow.firstChild);
+        }
+      }
+    }catch(e){}
+  }
+
   function setView_(view){
     const v = (view === 'tech') ? 'tech' : 'clean';
     document.body.classList.toggle('viewClean', v === 'clean');
@@ -564,8 +626,14 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    if (v === 'tech') setLogVisible_(true);
-    else setLogVisible_(false);
+    if (v === 'tech'){
+      placeHostChip_('log');     // ✅ host a la izquierda de Log
+      setLogVisible_(true);
+    }else{
+      // en vista limpia igual se oculta por CSS, pero lo regresamos a header por orden
+      placeHostChip_('header');
+      setLogVisible_(false);
+    }
 
     storageSet_('seproincaia.view', v).catch(()=>{});
     log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
@@ -789,290 +857,6 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-  // ------- BARRAS helpers (sin cambios) -------
-  function _toNumberOrNull_(v){
-    if (v === null || typeof v === 'undefined') return null;
-    const s = String(v).replace(',', '.').trim();
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  async function readNamedNumbers_(names){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = {};
-      for (const nm of names){
-        const it = ctx.workbook.names.getItemOrNullObject(nm);
-        it.load(["name","type","value"]);
-        items[nm] = it;
-      }
-      await ctx.sync();
-
-      const rangeToLoad = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          try{
-            const rng = it.getRange();
-            rng.load(["values"]);
-            rangeToLoad[nm] = rng;
-          }catch(e){
-            rangeToLoad[nm] = null;
-          }
-        }else{
-          rangeToLoad[nm] = null;
-        }
-      }
-      await ctx.sync();
-
-      const res = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ res[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          const rng = rangeToLoad[nm];
-          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          res[nm] = _toNumberOrNull_(v);
-        }else{
-          res[nm] = _toNumberOrNull_(it.value);
-        }
-      }
-      return res;
-    });
-  }
-
-  async function readNamedValuesRaw_(names){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = {};
-      for (const nm of names){
-        const it = ctx.workbook.names.getItemOrNullObject(nm);
-        it.load(["name","type","value"]);
-        items[nm] = it;
-      }
-      await ctx.sync();
-
-      const rangeToLoad = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ rangeToLoad[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          try{
-            const rng = it.getRange();
-            rng.load(["values"]);
-            rangeToLoad[nm] = rng;
-          }catch(e){
-            rangeToLoad[nm] = null;
-          }
-        }else{
-          rangeToLoad[nm] = null;
-        }
-      }
-      await ctx.sync();
-
-      const res = {};
-      for (const nm of names){
-        const it = items[nm];
-        if (!it || it.isNullObject){ res[nm] = null; continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t === 'range'){
-          const rng = rangeToLoad[nm];
-          const v = (rng && rng.values && rng.values[0]) ? rng.values[0][0] : null;
-          if (v === "" || typeof v === "undefined") res[nm] = null;
-          else res[nm] = v;
-        }else{
-          const v = it.value;
-          if (v === "" || typeof v === "undefined") res[nm] = null;
-          else res[nm] = v;
-        }
-      }
-      return res;
-    });
-  }
-
-  function _diamFractionFromMm_(mm){
-    const x = Number(mm);
-    if (!Number.isFinite(x)) return null;
-
-    const tol = 0.25;
-    const MAP = [
-      { mm: 6.35,  s: '1/4"' },
-      { mm: 7.94,  s: '5/16"' },
-      { mm: 9.53,  s: '3/8"' },
-      { mm: 12.70, s: '1/2"' },
-      { mm: 15.88, s: '5/8"' },
-      { mm: 19.05, s: '3/4"' },
-      { mm: 22.225, s: '7/8"' },
-      { mm: 25.40, s: '1"' },
-      { mm: 35.81, s: '1 3/8"' }
-    ];
-
-    let best = null;
-    for (const m of MAP){
-      const d = Math.abs(x - m.mm);
-      if (d <= tol && (!best || d < best.d)){
-        best = { d, s: m.s };
-      }
-    }
-    return best ? best.s : null;
-  }
-
-  function _fmtDiamCell_(diamMm){
-    const frac = _diamFractionFromMm_(diamMm);
-    if (frac) return `${frac}`;
-    const x = Number(diamMm);
-    if (!Number.isFinite(x)) return '';
-    return `${x.toFixed(2)} mm`;
-  }
-
-  async function writeNamedCellsSoft_(kv){
-    if (typeof Excel === 'undefined' || !Excel.run){
-      throw new Error('Excel API no disponible en este host.');
-    }
-
-    return await Excel.run(async (ctx) => {
-      const items = [];
-      for (const key of Object.keys(kv)){
-        const it = ctx.workbook.names.getItemOrNullObject(key);
-        it.load(["type"]);
-        items.push({ key, it });
-      }
-      await ctx.sync();
-
-      const skipped = [];
-      for (const item of items){
-        const it = item.it;
-        if (!it || it.isNullObject){ skipped.push(item.key); continue; }
-
-        const t = String(it.type || '').toLowerCase();
-        if (t !== 'range'){ skipped.push(item.key); continue; }
-
-        try{
-          const rng = it.getRange();
-          rng.values = [[kv[item.key]]];
-        }catch(e){
-          skipped.push(item.key);
-        }
-      }
-      await ctx.sync();
-
-      if (skipped.length){
-        log('WARN Barras: algunos nombres no se pudieron escribir (soft): ' + skipped.join(', '));
-      }
-    });
-  }
-
-  async function clearBarsNamedCells_(){
-    const kv = {
-      Sup_Diam_1: '', Sup_n_1: '', Sup_Diam_2: '', Sup_n_2: '',
-      Inf_Diam_1: '', Inf_n_1: '', Inf_Diam_2: '', Inf_n_2: '',
-      Sup2_Diam_1: '', Sup2_n_1: '', Sup2_Diam_2: '', Sup2_n_2: '',
-      Inf2_Diam_1: '', Inf2_n_1: '', Inf2_Diam_2: '', Inf2_n_2: '',
-      As_prov_sup1: '', As_prov_sup2: '', As_prov_inf1: '', As_prov_inf2: ''
-    };
-
-    await writeNamedCellsSoft_(kv);
-    log('Barras: limpieza forzada aplicada (todas las celdas).');
-  }
-
-  function _optToCells_(opt){
-    if (!opt) return { n1:'', d1:'', n2:'', d2:'', As:'' };
-
-    const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
-    const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
-    const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
-    const d2 = (opt.diam_2_mm != null && Number(opt.n_2) > 0) ? _fmtDiamCell_(opt.diam_2_mm) : '';
-
-    const As = (opt.As_prov_cm2 != null) ? Number(opt.As_prov_cm2) : '';
-    return { n1, d1, n2, d2, As };
-  }
-
-  async function writeBarsToNamedCells2_(barsData){
-    const supOpts = (barsData && barsData.sup && Array.isArray(barsData.sup.options)) ? barsData.sup.options : [];
-    const infOpts = (barsData && barsData.inf && Array.isArray(barsData.inf.options)) ? barsData.inf.options : [];
-
-    const sup1 = supOpts[0] || null;
-    const sup2 = supOpts[1] || null;
-    const inf1 = infOpts[0] || null;
-    const inf2 = infOpts[1] || null;
-
-    const s1 = _optToCells_(sup1);
-    const s2 = _optToCells_(sup2);
-    const i1 = _optToCells_(inf1);
-    const i2 = _optToCells_(inf2);
-
-    const kv = {
-      Sup_Diam_1: s1.d1, Sup_n_1: s1.n1, Sup_Diam_2: s1.d2, Sup_n_2: s1.n2,
-      Inf_Diam_1: i1.d1, Inf_n_1: i1.n1, Inf_Diam_2: i1.d2, Inf_n_2: i1.n2,
-      Sup2_Diam_1: s2.d1, Sup2_n_1: s2.n1, Sup2_Diam_2: s2.d2, Sup2_n_2: s2.n2,
-      Inf2_Diam_1: i2.d1, Inf2_n_1: i2.n1, Inf2_Diam_2: i2.d2, Inf2_n_2: i2.n2,
-      As_prov_sup1: (s1.As === '' ? '' : Number(s1.As).toFixed(3)),
-      As_prov_sup2: (s2.As === '' ? '' : Number(s2.As).toFixed(3)),
-      As_prov_inf1: (i1.As === '' ? '' : Number(i1.As).toFixed(3)),
-      As_prov_inf2: (i2.As === '' ? '' : Number(i2.As).toFixed(3)),
-    };
-
-    await writeNamedCellsSoft_(kv);
-
-    if (!supOpts.length) log('Barras: SUP sin opciones → celdas SUP limpiadas.');
-    if (!infOpts.length) log('Barras: INF sin opciones → celdas INF limpiadas.');
-    log('Barras: celdas por nombre rellenadas/limpiadas (Opción 1 y 2 + As_prov_*).');
-  }
-
-  function _coalesce_(){
-    for (let i = 0; i < arguments.length; i++){
-      const v = arguments[i];
-      if (v !== null && typeof v !== 'undefined' && v !== '') return v;
-    }
-    return null;
-  }
-
-  function _cmToMm_(cm){
-    const x = Number(cm);
-    return Number.isFinite(x) ? x * 10.0 : null;
-  }
-
-  function _safeNum_(x){
-    const n = Number(x);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  function _extractBarsSummary_(topLevelData, barsEnvelope){
-    if (topLevelData && typeof topLevelData.summary_text === 'string' && topLevelData.summary_text.trim()){
-      return topLevelData.summary_text;
-    }
-    if (barsEnvelope && typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-      return barsEnvelope.summary_text;
-    }
-    if (barsEnvelope && barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object'){
-      if (typeof barsEnvelope.summary_text === 'string' && barsEnvelope.summary_text.trim()){
-        return barsEnvelope.summary_text;
-      }
-      if (typeof barsEnvelope.data.summary_text === 'string' && barsEnvelope.data.summary_text.trim()){
-        return barsEnvelope.data.summary_text;
-      }
-    }
-    if (topLevelData && typeof topLevelData.result === 'string' && topLevelData.result.trim()){
-      return topLevelData.result;
-    }
-    return 'Barras OK.';
-  }
-
   async function ping_(){
     try{
       setBusy(true);
@@ -1120,6 +904,7 @@
   }
 
   async function execute_(){
+    // (sin cambios: tu función completa sigue igual)
     try{
       setBusy(true);
 
