@@ -36,7 +36,7 @@
       color: var(--ink);
     }
 
-    /* Header (compacto, sin repetir nombre) */
+    /* Header */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -54,13 +54,13 @@
       margin:0;
     }
 
-    /* ✅ Header: título + estado en la misma línea, altura estable */
+    /* Título + estado en la misma línea */
     .topLine{
       display:flex;
       align-items:center;
       gap:10px;
       flex-wrap:nowrap;
-      min-height: 20px; /* evita saltos */
+      min-height: 20px;
     }
     .hdrSep{
       opacity:.75;
@@ -84,8 +84,7 @@
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
-      /* ✅ evita que el footer tape contenido */
-      padding-bottom: 56px;
+      padding-bottom: 56px; /* footer */
     }
 
     .card{
@@ -155,19 +154,14 @@
     .dot.green{ background: #22c55e; }
     .dot.red{ background: #ef4444; }
     .dot.neutral{ background:#9ca3af; }
-
-    /* ✅ CAMBIO: azul para "En curso" */
     .dot.blue{ background: #3b82f6; }
 
-    /* ✅ CAMBIO: pulso suave cuando está en curso */
     @keyframes pulseSoft {
-      0%   { transform: scale(1);   box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,.35); }
+      0%   { transform: scale(1);    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,.35); }
       50%  { transform: scale(1.06); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 6px rgba(59,130,246,0); }
-      100% { transform: scale(1);   box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,0); }
+      100% { transform: scale(1);    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,0); }
     }
-    .dot.pulse{
-      animation: pulseSoft 1.2s ease-in-out infinite;
-    }
+    .dot.pulse{ animation: pulseSoft 1.2s ease-in-out infinite; }
 
     .btn{
       width:100%;
@@ -183,6 +177,33 @@
     }
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+    /* ✅ NUEVO: fila Token + Ejecutar */
+    .tokenExecRow{
+      display:flex;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:nowrap;
+    }
+    .tokenCol{
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .execCol{
+      flex: 0 0 auto;
+    }
+    .btnInline{
+      width:auto;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;   /* un pelín más pequeño */
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .tokenInputCompact{
+      font-size: 13px;   /* un pelín más pequeño para ahorrar espacio */
+      padding: 9px 10px;
+    }
 
     .btnGhost{
       border:1px solid var(--b);
@@ -214,7 +235,7 @@
     .hint{
       font-size:12px;
       color: var(--muted);
-      margin-top: 6px;
+      margin-top: 8px;
       line-height: 1.35;
     }
 
@@ -226,7 +247,6 @@
     }
     .logHidden{ display:none; }
 
-    /* ---------- Premium header Resultado ---------- */
     .resultHeader{
       display:flex;
       justify-content:space-between;
@@ -265,15 +285,13 @@
       color:#0b3a64;
     }
 
-    /* ---------- Vista Limpia ---------- */
+    /* Vista Limpia */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
 
-    /* =========================================================
-       ✅ Footer brand bar (franja azul inferior compacta)
-       ========================================================= */
+    /* Footer */
     .footerBar{
       position: fixed;
       left: 0;
@@ -317,7 +335,6 @@
 
 <body>
   <div class="header">
-    <!-- ✅ Título + estado en una sola línea -->
     <div class="topLine">
       <p class="sub" id="hdrTitle">Asistente Técnico</p>
       <div class="hdrSep">|</div>
@@ -333,18 +350,13 @@
         <span class="dot" id="hostDot"></span>
         <span id="hostText">host: ?</span>
       </div>
-
       <div style="height:1px;"></div>
     </div>
   </div>
 
   <div class="wrap">
-    <div class="card">
-      <div class="label" style="margin-top:0;">Token</div>
-      <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
-      <input id="apiUrl" type="text" style="display:none" />
-    </div>
 
+    <!-- ✅ 1) ACCIÓN primero -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
@@ -357,8 +369,18 @@
       <div class="label">Instrucción (opcional)</div>
       <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
-      <div style="height:10px"></div>
-      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
+      <!-- ✅ 2) Token debajo, en la MISMA LÍNEA del botón Ejecutar -->
+      <div class="tokenExecRow" style="margin-top:10px;">
+        <div class="tokenCol">
+          <div class="label" style="margin:0 0 6px;">Token</div>
+          <input id="token" class="tokenInputCompact" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
+          <input id="apiUrl" type="text" style="display:none" />
+        </div>
+
+        <div class="execCol">
+          <button class="btn btnInline" id="btnExecute" type="button">Ejecutar</button>
+        </div>
+      </div>
 
       <div class="hint" id="miniHint">
         <b>Redactar:</b> El contenido aparecerá en la celda que tengas activa.<br>
@@ -409,6 +431,7 @@
         <div id="log" class="log"></div>
       </div>
     </div>
+
   </div>
 
   <div class="footerBar" aria-hidden="true">
@@ -455,7 +478,6 @@
 
   const LOGP = "[SEPROINCA-IA][Excel] ";
 
-  /* ✅ CAMBIO: estado recordado para restaurarlo al salir de "En curso" */
   let _lastState = { state: 'neutral', uses: undefined };
 
   function storageAvailable_(){
@@ -510,15 +532,13 @@
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
-  /* ✅ CAMBIO: modo "En curso" con punto azul pulsando */
   function setStateBusy_(isBusy){
     if (!!isBusy){
       elStateDot.className = 'dot blue pulse';
       elStateText.textContent = 'En curso';
       return;
     }
-    // restaurar último estado real
-    setState_(_lastState.state, _lastState.uses, /*save*/false);
+    setState_(_lastState.state, _lastState.uses, false);
   }
 
   function setBusy(isBusy){
@@ -528,7 +548,6 @@
     elInstr.disabled = !!isBusy;
     elAction.disabled = !!isBusy;
 
-    /* ✅ CAMBIO */
     setStateBusy_(!!isBusy);
   }
 
@@ -596,9 +615,6 @@
     }
   }
 
-  // =========================================================
-  // ✅ REDACTAR — pegar en celda activa SIN cambiar anchos (DOBLE RESTAURACIÓN)
-  // =========================================================
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -688,11 +704,6 @@
     return t;
   }
 
-  /* ✅ CAMBIOS:
-     - invalid => "Verificar Token"
-     - active  => "OK · 250 usos" (con palabra usos)
-     - neutral => "Listo"
-  */
   function setState_(state, uses, save=true){
     const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
 
@@ -700,9 +711,6 @@
       _lastState = { state: s, uses: uses };
     }
 
-    // si justo está "en curso", no sobre-escribir (setBusy controla eso)
-    // (solo por seguridad: si alguien llama setState_ durante busy)
-    // Nota: aquí no sabemos busy, así que lo dejamos simple y estable.
     elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
 
     if (s === 'neutral'){
@@ -714,7 +722,6 @@
     if (s === 'active'){
       elStateText.textContent = `OK${u}`;
     }else{
-      // invalid
       elStateText.textContent = `Verificar Token${u}`;
     }
   }
@@ -787,9 +794,7 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-  // ----------------------------
-  // BARRAS helpers (idénticos al taskpane viejo)
-  // ----------------------------
+  // ------- BARRAS helpers (sin cambios) -------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
     const s = String(v).replace(',', '.').trim();
@@ -805,7 +810,6 @@
 
     return await Excel.run(async (ctx) => {
       const items = {};
-
       for (const nm of names){
         const it = ctx.workbook.names.getItemOrNullObject(nm);
         it.load(["name","type","value"]);
@@ -847,7 +851,6 @@
           res[nm] = _toNumberOrNull_(it.value);
         }
       }
-
       return res;
     });
   }
@@ -949,7 +952,6 @@
 
     return await Excel.run(async (ctx) => {
       const items = [];
-
       for (const key of Object.keys(kv)){
         const it = ctx.workbook.names.getItemOrNullObject(key);
         it.load(["type"]);
@@ -972,7 +974,6 @@
           skipped.push(item.key);
         }
       }
-
       await ctx.sync();
 
       if (skipped.length){
@@ -995,9 +996,8 @@
   }
 
   function _optToCells_(opt){
-    if (!opt) {
-      return { n1:'', d1:'', n2:'', d2:'', As:'' };
-    }
+    if (!opt) return { n1:'', d1:'', n2:'', d2:'', As:'' };
+
     const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
     const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
     const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
@@ -1078,9 +1078,6 @@
     return 'Barras OK.';
   }
 
-  // ----------------------------
-  // Ping
-  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -1127,9 +1124,6 @@
     }
   }
 
-  // ----------------------------
-  // Execute (Barras / Redactar) — MISMA LÓGICA DEL VIEJO, SIN MODO
-  // ----------------------------
   async function execute_(){
     try{
       setBusy(true);
@@ -1349,9 +1343,6 @@
     }
   }
 
-  // ----------------------------
-  // Office.onReady
-  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
