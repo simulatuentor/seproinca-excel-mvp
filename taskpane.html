@@ -36,7 +36,7 @@
       color: var(--ink);
     }
 
-    /* Header (compacto, sin repetir nombre) */
+    /* Header */
     .header{
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color:#fff;
@@ -54,11 +54,37 @@
       margin:0;
     }
 
+    /* Título + estado en la misma línea */
+    .topLine{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:nowrap;
+      min-height: 20px;
+    }
+    .hdrSep{
+      opacity:.75;
+      font-weight:900;
+      line-height:1;
+    }
+    .chipState{
+      padding: 6px 10px;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+    #stateText{
+      display:inline-block;
+      max-width: 240px;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+    #hdrTitle{ white-space:nowrap; }
+
     .wrap{
       padding: 12px 12px 18px;
       max-width: 520px;
-      /* ✅ ya NO es necesario “reservar espacio” porque el footer no es fijo */
-      /* padding-bottom: 56px; */
+      padding-bottom: 14px; /* ✅ ya no hace falta reservar 56px (footer no es fijo) */
     }
 
     .card{
@@ -128,6 +154,14 @@
     .dot.green{ background: #22c55e; }
     .dot.red{ background: #ef4444; }
     .dot.neutral{ background:#9ca3af; }
+    .dot.blue{ background: #3b82f6; }
+
+    @keyframes pulseSoft {
+      0%   { transform: scale(1);    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,.35); }
+      50%  { transform: scale(1.06); box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 6px rgba(59,130,246,0); }
+      100% { transform: scale(1);    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35), 0 0 0 0 rgba(59,130,246,0); }
+    }
+    .dot.pulse{ animation: pulseSoft 1.2s ease-in-out infinite; }
 
     .btn{
       width:100%;
@@ -143,6 +177,33 @@
     }
     .btn:active{ transform: translateY(1px); }
     .btn:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+    /* ✅ NUEVO: fila Token + Ejecutar */
+    .tokenExecRow{
+      display:flex;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:nowrap;
+    }
+    .tokenCol{
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .execCol{
+      flex: 0 0 auto;
+    }
+    .btnInline{
+      width:auto;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .tokenInputCompact{
+      font-size: 13px;
+      padding: 9px 10px;
+    }
 
     .btnGhost{
       border:1px solid var(--b);
@@ -174,7 +235,7 @@
     .hint{
       font-size:12px;
       color: var(--muted);
-      margin-top: 6px;
+      margin-top: 8px;
       line-height: 1.35;
     }
 
@@ -186,7 +247,6 @@
     }
     .logHidden{ display:none; }
 
-    /* ---------- Premium header Resultado ---------- */
     .resultHeader{
       display:flex;
       justify-content:space-between;
@@ -225,18 +285,18 @@
       color:#0b3a64;
     }
 
-    /* ---------- Vista Limpia ---------- */
+    /* Vista Limpia */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
 
     /* =========================================================
-       ✅ Footer brand bar (NO fijo: aparece al final al hacer scroll)
+       ✅ Footer NO fijo (solo visible al hacer scroll)
        ========================================================= */
     .footerBar{
-      position: static;              /* ✅ ya no es fixed */
-      height: 38px;
+      position: static; /* ✅ clave */
+      height: 34px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -244,27 +304,22 @@
       background: linear-gradient(180deg, var(--blue1), var(--blue2));
       color: rgba(255,255,255,.94);
       box-shadow: 0 -6px 18px rgba(0,0,0,.14);
-      margin-top: 12px;
+      margin: 10px 0 0;
     }
     .footerLeft{
       display:flex;
       align-items:center;
       gap:8px;
-      font-weight:800;
-      font-size:12px;
-      letter-spacing:.2px;
-      white-space: nowrap;
     }
-    /* ✅ logo desde URL */
     .footerLogoImg{
-      height: 18px;     /* ajusta aquí: 16–22 según te guste */
+      height: 16px;   /* ✅ si quieres más pequeño: 14px */
       width: auto;
       display:block;
       opacity:.98;
     }
     .footerRight{
-      font-size:12px;
-      opacity:.92;
+      font-size: 11px; /* ✅ más pequeño */
+      opacity:.90;
       font-weight:700;
       white-space: nowrap;
     }
@@ -273,27 +328,28 @@
 
 <body>
   <div class="header">
-    <p class="sub">Asistente Técnico — Concreto Armado</p>
+    <div class="topLine">
+      <p class="sub" id="hdrTitle">Asistente Técnico</p>
+      <div class="hdrSep">|</div>
+
+      <div class="chip chipState" id="tokenStateChip">
+        <span class="dot neutral" id="stateDot"></span>
+        <span id="stateText">Listo</span>
+      </div>
+    </div>
+
     <div class="row" style="margin-top:10px; justify-content:space-between;">
       <div class="chip" id="hostChip">
         <span class="dot" id="hostDot"></span>
         <span id="hostText">host: ?</span>
       </div>
-
-      <div class="chip" id="tokenStateChip">
-        <span class="dot neutral" id="stateDot"></span>
-        <span id="stateText">Estado: a la espera de petición</span>
-      </div>
+      <div style="height:1px;"></div>
     </div>
   </div>
 
   <div class="wrap">
-    <div class="card">
-      <div class="label" style="margin-top:0;">Token</div>
-      <input id="token" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
-      <input id="apiUrl" type="text" style="display:none" />
-    </div>
 
+    <!-- ✅ 1) ACCIÓN primero -->
     <div class="card">
       <div style="font-weight:900; margin-bottom:8px;">Acción</div>
 
@@ -306,8 +362,18 @@
       <div class="label">Instrucción (opcional)</div>
       <input id="instruction" type="text" placeholder="Ej: enfócate en limitación geométrica, o en sugerir alternativa práctica..." />
 
-      <div style="height:10px"></div>
-      <button class="btn" id="btnExecute" type="button">Ejecutar</button>
+      <!-- ✅ 2) Token debajo, en la MISMA LÍNEA del botón Ejecutar -->
+      <div class="tokenExecRow" style="margin-top:10px;">
+        <div class="tokenCol">
+          <div class="label" style="margin:0 0 6px;">Token</div>
+          <input id="token" class="tokenInputCompact" type="text" placeholder="Pega aquí tu token (se recordará automáticamente)" />
+          <input id="apiUrl" type="text" style="display:none" />
+        </div>
+
+        <div class="execCol">
+          <button class="btn btnInline" id="btnExecute" type="button">Ejecutar</button>
+        </div>
+      </div>
 
       <div class="hint" id="miniHint">
         <b>Redactar:</b> El contenido aparecerá en la celda que tengas activa.<br>
@@ -320,7 +386,6 @@
         <div style="font-weight:900;">Resultado</div>
 
         <div class="rightActions">
-          <!-- ORDEN: Copiar, Limpiar, Historial -->
           <button class="iconBtn" id="btnCopyResult" type="button" title="Copiar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H10V7h9v14z"/>
@@ -334,7 +399,6 @@
           </button>
 
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
-            <!-- Doc + lupa (relleno, visible en Excel) -->
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 2h8l4 4v6.2a6.2 6.2 0 1 1-2 4.6V10h-6V4H6v18h6.2a6.2 6.2 0 0 1 0 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V7h3.5L14 3.5z"/>
               <path fill="currentColor" d="M17.2 14.2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm0-2a5.2 5.2 0 1 1-3.25 9.25l-1.9 1.9a1 1 0 0 1-1.4-1.4l1.9-1.9A5.2 5.2 0 0 1 17.2 12.2z"/>
@@ -361,19 +425,16 @@
       </div>
     </div>
 
-    <!-- ✅ Footer NO fijo: solo aparece al final -->
-    <div class="footerBar" aria-hidden="true">
-      <div class="footerLeft">
-        <img
-          class="footerLogoImg"
-          src="https://raw.githubusercontent.com/simulatuentor/seproinca-excel-mvp/main/Logo-Seproinca-Blanco.png"
-          alt="Seproinca"
-        />
-        <div>Seproinca</div>
-      </div>
-      <div class="footerRight">SEPROINCA-IA · v1.0.0</div>
-    </div>
+  </div>
 
+  <!-- ✅ Footer NO fijo + logo por URL + sin texto “Seproinca” -->
+  <div class="footerBar" aria-hidden="true">
+    <div class="footerLeft">
+      <img class="footerLogoImg"
+           src="https://raw.githubusercontent.com/simulatuentor/seproinca-excel-mvp/main/Logo-Seproinca-Blanco.png"
+           alt="Seproinca" />
+    </div>
+    <div class="footerRight">SEPROINCA-IA · v1.0.0</div>
   </div>
 
 <script>
@@ -411,6 +472,8 @@
   const API_TIMEOUT_MS_POST = 35000;
 
   const LOGP = "[SEPROINCA-IA][Excel] ";
+
+  let _lastState = { state: 'neutral', uses: undefined };
 
   function storageAvailable_(){
     try{
@@ -464,12 +527,23 @@
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
+  function setStateBusy_(isBusy){
+    if (!!isBusy){
+      elStateDot.className = 'dot blue pulse';
+      elStateText.textContent = 'En curso';
+      return;
+    }
+    setState_(_lastState.state, _lastState.uses, false);
+  }
+
   function setBusy(isBusy){
     [btnExecute, btnPing, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
     elAction.disabled = !!isBusy;
+
+    setStateBusy_(!!isBusy);
   }
 
   function setLogVisible_(visible){
@@ -536,9 +610,6 @@
     }
   }
 
-  // =========================================================
-  // ✅ REDACTAR — pegar en celda activa SIN cambiar anchos (DOBLE RESTAURACIÓN)
-  // =========================================================
   async function writeResultToActiveCell_(text){
     try{
       if (typeof Excel === 'undefined' || !Excel.run) return;
@@ -628,17 +699,26 @@
     return t;
   }
 
-  function setState_(state, uses){
+  function setState_(state, uses, save=true){
     const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
+
+    if (save){
+      _lastState = { state: s, uses: uses };
+    }
+
     elStateDot.className = 'dot ' + (s === 'active' ? 'green' : (s === 'invalid' ? 'red' : 'neutral'));
 
     if (s === 'neutral'){
-      elStateText.textContent = 'Estado: a la espera de petición';
+      elStateText.textContent = 'Listo';
       return;
     }
 
-    const u = (typeof uses !== 'undefined' && uses !== null) ? ` (${uses} usos)` : '';
-    elStateText.textContent = `Estado: ${s === 'active' ? 'Activo' : 'No válido'}${u}`;
+    const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses} usos` : '';
+    if (s === 'active'){
+      elStateText.textContent = `OK${u}`;
+    }else{
+      elStateText.textContent = `Verificar Token${u}`;
+    }
   }
 
   function _makeReqId_(){
@@ -709,9 +789,7 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-  // ----------------------------
-  // BARRAS helpers (idénticos al taskpane viejo)
-  // ----------------------------
+  // ------- BARRAS helpers (sin cambios) -------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
     const s = String(v).replace(',', '.').trim();
@@ -727,7 +805,6 @@
 
     return await Excel.run(async (ctx) => {
       const items = {};
-
       for (const nm of names){
         const it = ctx.workbook.names.getItemOrNullObject(nm);
         it.load(["name","type","value"]);
@@ -769,7 +846,6 @@
           res[nm] = _toNumberOrNull_(it.value);
         }
       }
-
       return res;
     });
   }
@@ -871,7 +947,6 @@
 
     return await Excel.run(async (ctx) => {
       const items = [];
-
       for (const key of Object.keys(kv)){
         const it = ctx.workbook.names.getItemOrNullObject(key);
         it.load(["type"]);
@@ -894,7 +969,6 @@
           skipped.push(item.key);
         }
       }
-
       await ctx.sync();
 
       if (skipped.length){
@@ -917,9 +991,8 @@
   }
 
   function _optToCells_(opt){
-    if (!opt) {
-      return { n1:'', d1:'', n2:'', d2:'', As:'' };
-    }
+    if (!opt) return { n1:'', d1:'', n2:'', d2:'', As:'' };
+
     const n1 = (opt.n_1 != null) ? Number(opt.n_1) : '';
     const d1 = (opt.diam_1_mm != null) ? _fmtDiamCell_(opt.diam_1_mm) : '';
     const n2 = (opt.n_2 != null && Number(opt.n_2) > 0) ? Number(opt.n_2) : '';
@@ -1000,9 +1073,6 @@
     return 'Barras OK.';
   }
 
-  // ----------------------------
-  // Ping
-  // ----------------------------
   async function ping_(){
     try{
       setBusy(true);
@@ -1032,7 +1102,7 @@
           const f = _formatBackendError_(d, out.raw);
           showERR(f.userMsg);
           log('Ping ERROR (backend): ' + f.techMsg);
-          setState_('neutral');
+          setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
         }
       }else{
         showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
@@ -1049,9 +1119,6 @@
     }
   }
 
-  // ----------------------------
-  // Execute (Barras / Redactar) — MISMA LÓGICA DEL VIEJO, SIN MODO
-  // ----------------------------
   async function execute_(){
     try{
       setBusy(true);
@@ -1243,7 +1310,6 @@
           return;
         }
 
-        // Redactar
         showOK(String(data.result || ''));
         await writeResultToActiveCell_(String(data.result || ''));
         return;
@@ -1272,9 +1338,6 @@
     }
   }
 
-  // ----------------------------
-  // Office.onReady
-  // ----------------------------
   Office.onReady(async (info) => {
     const host = (info && info.host) ? info.host : 'unknown';
 
