@@ -490,7 +490,7 @@
   const btnClearResult = $('#btnClearResult');
   const btnToggleTech  = $('#btnToggleTech');
 
-  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzoJ8lmVd9cj_5Tx6Ds23kHjhniO3-V0sZPCEP9YeuYtEggNMAVSc0p0v0TUwdxv7YpJA/exec";
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyIqN_hKsWkKLMhsHINw59BZYN0OUV27BBdZALULnPzruzgkROzN1AFctaSeOPYk5h8Yw/exec";
 
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
@@ -813,6 +813,7 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
+   // ------- INICIO PARTE II -------
   // ------- BARRAS helpers (sin cambios) -------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
