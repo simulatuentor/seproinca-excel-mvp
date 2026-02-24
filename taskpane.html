@@ -146,6 +146,19 @@
       color: #fff;
       user-select:none;
     }
+    .chipSmall{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--b);
+      background: #fff;
+      color: #111827;
+      user-select:none;
+      box-shadow: var(--shadow2);
+    }
     .dot{
       width:10px;height:10px;border-radius:999px;
       background:#9ca3af;
@@ -270,7 +283,7 @@
       background:#fff;
       color:#6b7280;
       border-radius: 12px;
-      cursor:pointer;
+      cursor: pointer;
       box-shadow: var(--shadow2);
       transition: transform .08s ease, background .12s ease, color .12s ease, border-color .12s ease;
     }
@@ -285,38 +298,14 @@
       color:#0b3a64;
     }
 
-    /* ✅ OJO (historial) ultra nítido: líneas (stroke) y color controlado */
-    .iconBtn .eyeStroke{
-      stroke: #111827;
-      stroke-width: 2;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      vector-effect: non-scaling-stroke;
-      shape-rendering: geometricPrecision;
-    }
-    .iconBtn.isOn .eyeStroke{
-      stroke: #cbd5e1;
-    }
-
-    /* Vista Limpia (DEV: "limpia" sigue siendo de dev, solo oculta secciones) */
+    /* Vista Limpia (técnica “limpia”) */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
-    body.viewClean #btnToggleLog{ display:none !important; }
-    body.viewClean #hostChip{ display:none !important; }
 
-    /* =========================================================
-       ✅ MODO UI (User vs Dev)
-       - body.modeUser  => vista limpia REAL (sin controles técnicos ni toggle)
-       - body.modeDev   => mantiene tu lógica actual tech/clean
-       ========================================================= */
-
-    /* USER MODE: ocultar TODO lo técnico y el toggle */
-    body.modeUser .cardLog{ display:none !important; }
-    body.modeUser #btnPing{ display:none !important; }
-    body.modeUser #btnToggleLog{ display:none !important; }
-    body.modeUser #hostChip{ display:none !important; }
-    body.modeUser #btnToggleTech{ display:none !important; } /* ← clave */
+    /* ✅ Vista Usuario (limpia real): sin técnico + sin toggle */
+    body.viewUser .cardLog{ display:none !important; }
+    body.viewUser #btnPing{ display:none !important; }
+    body.viewUser #btnToggleTech{ display:none !important; }
 
     /* Footer */
     .footerBar{
@@ -371,14 +360,6 @@
         <span id="stateText">Listo</span>
       </div>
     </div>
-
-    <div class="row" style="margin-top:10px; justify-content:space-between;">
-      <div class="chip" id="hostChip">
-        <span class="dot" id="hostDot"></span>
-        <span id="hostText">host: ?</span>
-      </div>
-      <div style="height:1px;"></div>
-    </div>
   </div>
 
   <div class="wrap">
@@ -430,7 +411,7 @@
             </svg>
           </button>
 
-          <!-- ✅ Historial / informe -->
+          <!-- Historial / informe: HOJA + LUPA -->
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M7 3h7l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
@@ -448,10 +429,16 @@
 
     <div class="card cardLog">
       <div class="collapseHeader">
-        <div style="font-weight:900;">Log</div>
+        <div class="row" style="gap:10px; flex-wrap:nowrap;">
+          <div style="font-weight:900;">Log</div>
+          <div class="chipSmall" id="hostChipInline" title="Host de Office">
+            <span class="dot" id="hostDot"></span>
+            <span id="hostText">host: ?</span>
+          </div>
+        </div>
+
         <div class="row" style="gap:8px;">
           <button class="btnGhost" id="btnPing" type="button" style="width:auto; padding:8px 10px;">Ping</button>
-          <button class="btnGhost" id="btnToggleLog" type="button" style="width:auto; padding:8px 10px;">Ver log</button>
         </div>
       </div>
 
@@ -471,7 +458,7 @@
     <div class="footerRight">SEPROINCA-IA · v1.0.0</div>
   </div>
 
-<script>
+  <script>
 (function(){
   const $ = (s) => document.querySelector(s);
 
@@ -493,7 +480,6 @@
   const btnExecute = $('#btnExecute');
   const btnPing = $('#btnPing');
 
-  const btnToggleLog = $('#btnToggleLog');
   const elLogWrap = $('#logWrap');
 
   const btnCopyResult  = $('#btnCopyResult');
@@ -504,10 +490,14 @@
 
   const API_TIMEOUT_MS_PING = 15000;
   const API_TIMEOUT_MS_POST = 35000;
+  const API_TIMEOUT_MS_AUTH = 20000;
 
   const LOGP = "[SEPROINCA-IA][Excel] ";
 
   let _lastState = { state: 'neutral', uses: undefined };
+
+  // ✅ role: 'unknown' | 'user' | 'admin'
+  let _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
 
   function storageAvailable_(){
     try{
@@ -571,7 +561,7 @@
   }
 
   function setBusy(isBusy){
-    [btnExecute, btnPing, btnToggleLog, btnCopyResult, btnClearResult, btnToggleTech]
+    [btnExecute, btnPing, btnCopyResult, btnClearResult, btnToggleTech]
       .forEach(b => b && (b.disabled = !!isBusy));
     elToken.disabled = !!isBusy;
     elInstr.disabled = !!isBusy;
@@ -583,92 +573,24 @@
   function setLogVisible_(visible){
     const v = !!visible;
     elLogWrap.classList.toggle('logHidden', !v);
-    btnToggleLog.textContent = v ? 'Ocultar log' : 'Ver log';
   }
 
   function isTech_(){
     return !document.body.classList.contains('viewClean');
   }
 
-  // =========================================================
-  // ✅ MODO UI: user vs dev
-  // =========================================================
-  let _uiMode = 'user'; // default seguro
-
-  function _normalizeMode_(m){
-    const s = String(m || '').toLowerCase().trim();
-    if (s === 'dev' || s === 'developer' || s === 'admin' || s === 'tech') return 'dev';
-    if (s === 'user' || s === 'usuario' || s === 'cliente') return 'user';
-    return '';
-  }
-
-  function isDevMode_(){
-    return _uiMode === 'dev';
-  }
-
-  function setMode_(mode){
-    const m = _normalizeMode_(mode) || 'user';
-    _uiMode = m;
-
-    document.body.classList.toggle('modeDev',  m === 'dev');
-    document.body.classList.toggle('modeUser', m === 'user');
-
-    // Título
-    try{
-      const hdr = $('#hdrTitle');
-      if (hdr) hdr.textContent = (m === 'dev') ? 'Asistente Técnico' : 'Asistente';
-    }catch(e){}
-
-    // En modo usuario: forzar limpia real y bloquear toggle
-    if (m === 'user'){
-      document.body.classList.add('viewClean');
-      setLogVisible_(false);
-      try{ btnToggleTech && (btnToggleTech.disabled = true); }catch(e){}
-    }else{
-      try{ btnToggleTech && (btnToggleTech.disabled = false); }catch(e){}
-    }
-
-    storageSet_('seproincaia.uiMode', m).catch(()=>{});
-    log('UI mode: ' + m);
-  }
-
-  function _inferModeFromBackend_(resp){
-    if (!resp || typeof resp !== 'object') return '';
-
-    // Campos típicos (tu backend ya devuelve role en Auth, y en acciones puede venir role también)
-    const candidates = [
-      resp.role,
-      resp.ui_mode,
-      resp.user_type,
-      resp.token_type,
-      resp.token_kind,
-      (resp.data && resp.data.role),
-      (resp.data && resp.data.ui_mode)
-    ].filter(v => v !== null && typeof v !== 'undefined');
-
-    for (const c of candidates){
-      const m = _normalizeMode_(c);
-      if (m) return m;
-    }
-
-    // Flags
-    const isAdmin = !!(resp.is_admin || (resp.data && resp.data.is_admin));
-    const isDev   = !!(resp.is_dev   || (resp.data && resp.data.is_dev));
-    if (isAdmin || isDev) return 'dev';
-
-    return '';
-  }
-
+  // ✅ Control de vista SOLO para admin/dev
   function setView_(view){
-    // ✅ si NO es dev, forzar limpia real y salir
-    if (!isDevMode_()){
-      document.body.classList.add('viewClean');
+    // si es user → siempre vista limpia real (sin toggle)
+    if (_auth.role === 'user'){
+      document.body.classList.add('viewUser');
+      document.body.classList.remove('viewClean');
       setLogVisible_(false);
-      try{
-        btnToggleTech.classList.remove('isOn');
-      }catch(e){}
       return;
     }
+
+    // admin/dev
+    document.body.classList.remove('viewUser');
 
     const v = (view === 'tech') ? 'tech' : 'clean';
     document.body.classList.toggle('viewClean', v === 'clean');
@@ -677,15 +599,15 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    if (v === 'tech') setLogVisible_(true);
-    else setLogVisible_(false);
+    // ✅ El log SOLO depende del botón de historial/informe
+    setLogVisible_(v === 'tech');
 
     storageSet_('seproincaia.view', v).catch(()=>{});
     log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
   }
 
   function toggleView_(){
-    if (!isDevMode_()) return;
+    if (_auth.role === 'user') return;
     setView_(isTech_() ? 'clean' : 'tech');
   }
 
@@ -901,6 +823,127 @@
     const detailTxt = det ? (' | ' + String(det)) : '';
 
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
+  }
+
+  // ✅ Auth (detecta role sin consumir usos)
+  async function authCheck_(token){
+    const t = String(token || '').trim();
+    if (!t){
+      _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
+      document.body.classList.remove('viewUser');
+      setView_('clean');
+      return;
+    }
+
+    const request_id = _makeReqId_();
+    const bodyObj = {
+      action: "Auth",
+      token: t,
+      email: "",
+      payload: {},
+      request_id
+    };
+
+    const url = getApiUrl_();
+    log(`AUTH → [${request_id}]`);
+
+    const out = await _fetchJson_(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(bodyObj)
+    }, API_TIMEOUT_MS_AUTH);
+
+    if (!out.ok && out.error){
+      log('AUTH ERROR red: ' + out.error);
+      _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
+      document.body.classList.remove('viewUser');
+      setView_('clean');
+      setState_('invalid');
+      return;
+    }
+
+    const d = out.data;
+
+    if (d && d.ok && String(d.action || '') === 'Auth'){
+      _auth = {
+        role: d.role || 'user',
+        plan: d.plan || '',
+        model: d.model || '',
+        uses_remaining: (typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined
+      };
+
+      // Si es user → limpia real; si es admin → restaura vista guardada
+      if (_auth.role === 'user'){
+        document.body.classList.add('viewUser');
+        setState_('active', _auth.uses_remaining);
+        setView_('clean'); // esto internamente fuerza viewUser y oculta log
+        log('AUTH OK: role=user (vista usuario activada)');
+      }else{
+        document.body.classList.remove('viewUser');
+        const savedView = await storageGet_('seproincaia.view');
+        setState_('active', undefined);
+        setView_(savedView === 'tech' ? 'tech' : 'clean');
+        log('AUTH OK: role=' + _auth.role + ' (vista dev activada)');
+      }
+      return;
+    }
+
+    // si falla auth
+    const f = _formatBackendError_(d, out.raw);
+    log('AUTH ERROR backend: ' + f.techMsg);
+    _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
+    document.body.classList.remove('viewUser');
+    setView_('clean');
+    setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
+  }
+
+  async function ping_(){
+    try{
+      setBusy(true);
+      const base = getApiUrl_();
+      const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+      log('Ping GET (JSON-only esperado)');
+      const out = await _fetchJson_(url, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }, API_TIMEOUT_MS_PING);
+
+      if (!out.ok && out.error){
+        showERR('No se pudo conectar. ' + out.error);
+        log('Ping ERROR: ' + out.error);
+        setState_('neutral');
+        return;
+      }
+
+      if (out.ok && out.data){
+        const d = out.data;
+        if (d.ok){
+          showOK([`service: ${d.service || '—'}`,`version: ${d.version || '—'}`,`now: ${d.now || '—'}`].join('\n'));
+          log('Ping OK (version=' + (d.version || '—') + ')');
+          setState_('neutral');
+        }else{
+          const f = _formatBackendError_(d, out.raw);
+          showERR(f.userMsg);
+          log('Ping ERROR (backend): ' + f.techMsg);
+          setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
+        }
+      }else{
+        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
+        log('Ping ERROR: respuesta no JSON');
+        setState_('neutral');
+      }
+
+    }catch(e){
+      showERR(e.message || String(e));
+      log('Ping ERROR: ' + (e.message || e));
+      setState_('neutral');
+    }finally{
+      setBusy(false);
+    }
   }
 
   // ------- BARRAS helpers (sin cambios) -------
@@ -1187,58 +1230,17 @@
     return 'Barras OK.';
   }
 
-  async function ping_(){
-    try{
-      setBusy(true);
-      const base = getApiUrl_();
-      const url = base + (base.includes('?') ? '&' : '?') + 't=' + Date.now();
-
-      log('Ping GET (JSON-only esperado)');
-      const out = await _fetchJson_(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      }, API_TIMEOUT_MS_PING);
-
-      if (!out.ok && out.error){
-        showERR('No se pudo conectar. ' + out.error);
-        log('Ping ERROR: ' + out.error);
-        setState_('neutral');
-        return;
-      }
-
-      if (out.ok && out.data){
-        const d = out.data;
-        if (d.ok){
-          showOK([`service: ${d.service || '—'}`,`version: ${d.version || '—'}`,`now: ${d.now || '—'}`].join('\n'));
-          log('Ping OK (version=' + (d.version || '—') + ')');
-          setState_('neutral');
-        }else{
-          const f = _formatBackendError_(d, out.raw);
-          showERR(f.userMsg);
-          log('Ping ERROR (backend): ' + f.techMsg);
-          setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
-        }
-      }else{
-        showERR('El servidor respondió de forma inesperada. Intenta nuevamente.');
-        log('Ping ERROR: respuesta no JSON');
-        setState_('neutral');
-      }
-
-    }catch(e){
-      showERR(e.message || String(e));
-      log('Ping ERROR: ' + (e.message || e));
-      setState_('neutral');
-    }finally{
-      setBusy(false);
-    }
-  }
-
   async function execute_(){
     try{
       setBusy(true);
 
       const token = getToken_();
       await storageSet_('seproincaia.token.last', token);
+
+      // ✅ antes de ejecutar, validar role (si está unknown)
+      if (_auth.role === 'unknown'){
+        try{ await authCheck_(token); }catch(e){ log('WARN AUTH previo a ejecutar: ' + (e.message || e)); }
+      }
 
       const action = elAction.value || 'Redactar';
       const instruction = (elInstr.value || '').trim();
@@ -1382,15 +1384,15 @@
 
       if (data && data.ok){
         log('OK: respuesta recibida');
-
-        // ✅ detectar modo (si backend manda role)
-        try{
-          const inferred = _inferModeFromBackend_(data);
-          if (inferred) setMode_(inferred);
-        }catch(e){}
-
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
+
+        // ✅ refrescar auth si viene role
+        if (data.role){
+          _auth.role = data.role;
+          if (_auth.role === 'user') document.body.classList.add('viewUser');
+          else document.body.classList.remove('viewUser');
+        }
 
         if (action === 'Barras'){
           const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
@@ -1436,12 +1438,6 @@
         return;
 
       }else{
-        // ✅ detectar modo incluso en error si backend lo manda
-        try{
-          const inferred = _inferModeFromBackend_(data);
-          if (inferred) setMode_(inferred);
-        }catch(e){}
-
         const f = _formatBackendError_(data, out.raw);
 
         if ((elAction.value || '') === 'Barras'){
@@ -1469,7 +1465,7 @@
     const host = (info && info.host) ? info.host : 'unknown';
 
     if (elHostText) elHostText.textContent = 'host: ' + host;
-    elHostDot.className = 'dot green';
+    if (elHostDot)  elHostDot.className = 'dot green';
 
     elApiUrl.value = DEFAULT_API_URL;
     setLogVisible_(false);
@@ -1478,23 +1474,20 @@
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
     else { log('Sin token guardado todavía.'); }
 
-    // ✅ cargar modo guardado (default user)
-    const savedMode = await storageGet_('seproincaia.uiMode');
-    setMode_(savedMode === 'dev' ? 'dev' : 'user');
-
     setState_('neutral');
 
     btnExecute.addEventListener('click', execute_);
     btnPing.addEventListener('click', ping_);
-    btnToggleLog.addEventListener('click', () => setLogVisible_(elLogWrap.classList.contains('logHidden')));
 
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
     btnToggleTech.addEventListener('click', toggleView_);
 
+    // ✅ Restaurar vista (solo aplica si es dev/admin; si es user la fuerza auth)
     const savedView = await storageGet_('seproincaia.view');
     setView_(savedView === 'tech' ? 'tech' : 'clean');
 
+    // ✅ Al escribir token: guardarlo + AUTH automático (debounce)
     let tmr = null;
     elToken.addEventListener('input', () => {
       if (tmr) clearTimeout(tmr);
@@ -1502,8 +1495,15 @@
         const t = (elToken.value || '').trim();
         if (t) await storageSet_('seproincaia.token.last', t);
         else await storageDel_('seproincaia.token.last');
-      }, 350);
+
+        try{ await authCheck_(t); }catch(e){ log('WARN AUTH on input: ' + (e.message || e)); }
+      }, 450);
     });
+
+    // ✅ Si ya había token guardado, intentamos AUTH al abrir
+    if (last){
+      try{ await authCheck_(last); }catch(e){ log('WARN AUTH on startup: ' + (e.message || e)); }
+    }
 
     showOK(
       'Listo.\n\n' +
