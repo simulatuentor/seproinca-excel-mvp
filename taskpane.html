@@ -299,11 +299,24 @@
       stroke: #cbd5e1;
     }
 
-    /* Vista Limpia */
+    /* Vista Limpia (DEV: "limpia" sigue siendo de dev, solo oculta secciones) */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
+
+    /* =========================================================
+       ✅ MODO UI (User vs Dev)
+       - body.modeUser  => vista limpia REAL (sin controles técnicos ni toggle)
+       - body.modeDev   => mantiene tu lógica actual tech/clean
+       ========================================================= */
+
+    /* USER MODE: ocultar TODO lo técnico y el toggle */
+    body.modeUser .cardLog{ display:none !important; }
+    body.modeUser #btnPing{ display:none !important; }
+    body.modeUser #btnToggleLog{ display:none !important; }
+    body.modeUser #hostChip{ display:none !important; }
+    body.modeUser #btnToggleTech{ display:none !important; } /* ← clave */
 
     /* Footer */
     .footerBar{
@@ -417,15 +430,12 @@
             </svg>
           </button>
 
-          <!-- ✅ Historial / informe: HOJA + LUPA (líneas) bien legible -->
+          <!-- ✅ Historial / informe -->
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <!-- hoja (outline) -->
               <path d="M7 3h7l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
                     fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-              <!-- pliegue -->
               <path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-              <!-- lupa (más grande y limpia) -->
               <circle cx="16.5" cy="16.5" r="3.3" fill="none" stroke="currentColor" stroke-width="2"/>
               <path d="M19.1 19.1l2.2 2.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
@@ -580,7 +590,86 @@
     return !document.body.classList.contains('viewClean');
   }
 
+  // =========================================================
+  // ✅ MODO UI: user vs dev
+  // =========================================================
+  let _uiMode = 'user'; // default seguro
+
+  function _normalizeMode_(m){
+    const s = String(m || '').toLowerCase().trim();
+    if (s === 'dev' || s === 'developer' || s === 'admin' || s === 'tech') return 'dev';
+    if (s === 'user' || s === 'usuario' || s === 'cliente') return 'user';
+    return '';
+  }
+
+  function isDevMode_(){
+    return _uiMode === 'dev';
+  }
+
+  function setMode_(mode){
+    const m = _normalizeMode_(mode) || 'user';
+    _uiMode = m;
+
+    document.body.classList.toggle('modeDev',  m === 'dev');
+    document.body.classList.toggle('modeUser', m === 'user');
+
+    // Título
+    try{
+      const hdr = $('#hdrTitle');
+      if (hdr) hdr.textContent = (m === 'dev') ? 'Asistente Técnico' : 'Asistente';
+    }catch(e){}
+
+    // En modo usuario: forzar limpia real y bloquear toggle
+    if (m === 'user'){
+      document.body.classList.add('viewClean');
+      setLogVisible_(false);
+      try{ btnToggleTech && (btnToggleTech.disabled = true); }catch(e){}
+    }else{
+      try{ btnToggleTech && (btnToggleTech.disabled = false); }catch(e){}
+    }
+
+    storageSet_('seproincaia.uiMode', m).catch(()=>{});
+    log('UI mode: ' + m);
+  }
+
+  function _inferModeFromBackend_(resp){
+    if (!resp || typeof resp !== 'object') return '';
+
+    // Campos típicos (tu backend ya devuelve role en Auth, y en acciones puede venir role también)
+    const candidates = [
+      resp.role,
+      resp.ui_mode,
+      resp.user_type,
+      resp.token_type,
+      resp.token_kind,
+      (resp.data && resp.data.role),
+      (resp.data && resp.data.ui_mode)
+    ].filter(v => v !== null && typeof v !== 'undefined');
+
+    for (const c of candidates){
+      const m = _normalizeMode_(c);
+      if (m) return m;
+    }
+
+    // Flags
+    const isAdmin = !!(resp.is_admin || (resp.data && resp.data.is_admin));
+    const isDev   = !!(resp.is_dev   || (resp.data && resp.data.is_dev));
+    if (isAdmin || isDev) return 'dev';
+
+    return '';
+  }
+
   function setView_(view){
+    // ✅ si NO es dev, forzar limpia real y salir
+    if (!isDevMode_()){
+      document.body.classList.add('viewClean');
+      setLogVisible_(false);
+      try{
+        btnToggleTech.classList.remove('isOn');
+      }catch(e){}
+      return;
+    }
+
     const v = (view === 'tech') ? 'tech' : 'clean';
     document.body.classList.toggle('viewClean', v === 'clean');
 
@@ -596,6 +685,7 @@
   }
 
   function toggleView_(){
+    if (!isDevMode_()) return;
     setView_(isTech_() ? 'clean' : 'tech');
   }
 
@@ -1292,6 +1382,13 @@
 
       if (data && data.ok){
         log('OK: respuesta recibida');
+
+        // ✅ detectar modo (si backend manda role)
+        try{
+          const inferred = _inferModeFromBackend_(data);
+          if (inferred) setMode_(inferred);
+        }catch(e){}
+
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
@@ -1339,6 +1436,12 @@
         return;
 
       }else{
+        // ✅ detectar modo incluso en error si backend lo manda
+        try{
+          const inferred = _inferModeFromBackend_(data);
+          if (inferred) setMode_(inferred);
+        }catch(e){}
+
         const f = _formatBackendError_(data, out.raw);
 
         if ((elAction.value || '') === 'Barras'){
@@ -1374,6 +1477,10 @@
     const last = await storageGet_('seproincaia.token.last');
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
     else { log('Sin token guardado todavía.'); }
+
+    // ✅ cargar modo guardado (default user)
+    const savedMode = await storageGet_('seproincaia.uiMode');
+    setMode_(savedMode === 'dev' ? 'dev' : 'user');
 
     setState_('neutral');
 
