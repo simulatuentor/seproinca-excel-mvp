@@ -349,7 +349,7 @@
   </style>
 </head>
 
-<body>
+<body class="viewUser">
   <div class="header">
     <div class="topLine">
       <p class="sub" id="hdrTitle">Asistente Técnico</p>
@@ -496,8 +496,8 @@
 
   let _lastState = { state: 'neutral', uses: undefined };
 
-  // ✅ role: 'unknown' | 'user' | 'admin'
-  let _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
+  // ✅ IMPORTANTE: por defecto SIEMPRE es user hasta que Auth confirme admin/dev
+  let _auth = { role:'user', plan:'', model:'', uses_remaining: undefined };
 
   function storageAvailable_(){
     try{
@@ -579,9 +579,9 @@
     return !document.body.classList.contains('viewClean');
   }
 
-  // ✅ Control de vista SOLO para admin/dev
+  // ✅ Control de vista: por defecto usuario real; solo admin/dev puede alternar
   function setView_(view){
-    // si es user → siempre vista limpia real (sin toggle)
+    // usuario → siempre limpia real
     if (_auth.role === 'user'){
       document.body.classList.add('viewUser');
       document.body.classList.remove('viewClean');
@@ -599,7 +599,7 @@
     btnToggleTech.classList.toggle('isOn', on);
     btnToggleTech.title = on ? 'Ocultar historial / informe' : 'Ver historial / informe';
 
-    // ✅ El log SOLO depende del botón de historial/informe
+    // ✅ log SOLO depende del botón de historial/informe
     setLogVisible_(v === 'tech');
 
     storageSet_('seproincaia.view', v).catch(()=>{});
@@ -828,10 +828,12 @@
   // ✅ Auth (detecta role sin consumir usos)
   async function authCheck_(token){
     const t = String(token || '').trim();
+
+    // Si no hay token: mantenemos SIEMPRE vista usuario (por defecto)
     if (!t){
-      _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
-      document.body.classList.remove('viewUser');
-      setView_('clean');
+      _auth = { role:'user', plan:'', model:'', uses_remaining: undefined };
+      setView_('clean'); // internamente fuerza viewUser
+      setState_('neutral');
       return;
     }
 
@@ -856,10 +858,10 @@
       body: JSON.stringify(bodyObj)
     }, API_TIMEOUT_MS_AUTH);
 
+    // si hay error de red: nos quedamos en user (por defecto)
     if (!out.ok && out.error){
       log('AUTH ERROR red: ' + out.error);
-      _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
-      document.body.classList.remove('viewUser');
+      _auth = { role:'user', plan:'', model:'', uses_remaining: undefined };
       setView_('clean');
       setState_('invalid');
       return;
@@ -875,14 +877,12 @@
         uses_remaining: (typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined
       };
 
-      // Si es user → limpia real; si es admin → restaura vista guardada
       if (_auth.role === 'user'){
-        document.body.classList.add('viewUser');
         setState_('active', _auth.uses_remaining);
-        setView_('clean'); // esto internamente fuerza viewUser y oculta log
+        setView_('clean'); // fuerza viewUser
         log('AUTH OK: role=user (vista usuario activada)');
       }else{
-        document.body.classList.remove('viewUser');
+        // ✅ admin/dev: ahora sí habilitamos vista dev
         const savedView = await storageGet_('seproincaia.view');
         setState_('active', undefined);
         setView_(savedView === 'tech' ? 'tech' : 'clean');
@@ -891,11 +891,10 @@
       return;
     }
 
-    // si falla auth
+    // si backend responde auth inválido: nos quedamos en user (por defecto)
     const f = _formatBackendError_(d, out.raw);
     log('AUTH ERROR backend: ' + f.techMsg);
-    _auth = { role:'unknown', plan:'', model:'', uses_remaining: undefined };
-    document.body.classList.remove('viewUser');
+    _auth = { role:'user', plan:'', model:'', uses_remaining: undefined };
     setView_('clean');
     setState_('invalid', (d && typeof d.uses_remaining !== 'undefined') ? d.uses_remaining : undefined);
   }
@@ -1237,10 +1236,8 @@
       const token = getToken_();
       await storageSet_('seproincaia.token.last', token);
 
-      // ✅ antes de ejecutar, validar role (si está unknown)
-      if (_auth.role === 'unknown'){
-        try{ await authCheck_(token); }catch(e){ log('WARN AUTH previo a ejecutar: ' + (e.message || e)); }
-      }
+      // ✅ siempre intentamos Auth antes de ejecutar (sin cambiar backend)
+      try{ await authCheck_(token); }catch(e){ log('WARN AUTH previo a ejecutar: ' + (e.message || e)); }
 
       const action = elAction.value || 'Redactar';
       const instruction = (elInstr.value || '').trim();
@@ -1290,9 +1287,6 @@
         const rec_cm = _coalesce_(vals.rec, vals.cover);
         if (coverMm == null && rec_cm != null) coverMm = _cmToMm_(rec_cm);
 
-        const stirrupMm = _coalesce_(vals.stirrup_diam_mm, vals.diam_estribo_mm, vals.estribo_mm);
-        const sepMinMm  = _coalesce_(vals.sep_min_mm, vals.separacion_min_mm, vals.sep_min);
-
         payload = {
           kind: "fundamentos_barras_v1",
           As_req_neg_cm2: Number(AsNeg),
@@ -1302,28 +1296,6 @@
           cover_mm: _safeNum_(coverMm),
           instruction
         };
-
-        const stirrupN = _safeNum_(stirrupMm);
-        if (Number.isFinite(stirrupN) && stirrupN > 0){
-          payload.stirrup_diam_mm = stirrupN;
-        }
-
-        const sepN = _safeNum_(sepMinMm);
-        if (Number.isFinite(sepN) && sepN > 0){
-          payload.sep_min_mm = sepN;
-        }
-
-        const geomLog = {
-          As_req_neg_cm2: payload.As_req_neg_cm2,
-          As_req_pos_cm2: payload.As_req_pos_cm2,
-          b_sup_mm: payload.b_sup_mm,
-          b_inf_mm: payload.b_inf_mm,
-          cover_mm: payload.cover_mm
-        };
-        if (payload.stirrup_diam_mm != null) geomLog.stirrup_diam_mm = payload.stirrup_diam_mm;
-        if (payload.sep_min_mm != null) geomLog.sep_min_mm = payload.sep_min_mm;
-
-        log('Barras payload (geom): ' + JSON.stringify(geomLog));
       }
 
       if (action === 'Redactar'){
@@ -1387,13 +1359,6 @@
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
         setState_('active', uses);
 
-        // ✅ refrescar auth si viene role
-        if (data.role){
-          _auth.role = data.role;
-          if (_auth.role === 'user') document.body.classList.add('viewUser');
-          else document.body.classList.remove('viewUser');
-        }
-
         if (action === 'Barras'){
           const barsEnvelope = (data.data && typeof data.data === 'object') ? data.data : null;
           if (!barsEnvelope){
@@ -1405,27 +1370,6 @@
           const model = (barsEnvelope.ok && barsEnvelope.data && typeof barsEnvelope.data === 'object')
             ? barsEnvelope.data
             : barsEnvelope;
-
-          if (model && model.error){
-            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar por model.error: ' + (e.message || e)); }
-            showERR('Barras: ' + String(model.error));
-            log('Barras ERROR (model.error): ' + String(model.error));
-            return;
-          }
-
-          const supOpts = (model.sup && Array.isArray(model.sup.options)) ? model.sup.options : [];
-          const infOpts = (model.inf && Array.isArray(model.inf.options)) ? model.inf.options : [];
-
-          if (!supOpts.length && !infOpts.length){
-            try{ await clearBarsNamedCells_(); }catch(e){ log('WARN Barras: no se pudo limpiar todo: ' + (e.message || e)); }
-            const noteSup = (model.sup && model.sup.note) ? String(model.sup.note) : '';
-            const noteInf = (model.inf && model.inf.note) ? String(model.inf.note) : '';
-            const extra = [noteSup ? ('SUP:\n' + noteSup) : '', noteInf ? ('INF:\n' + noteInf) : ''].filter(Boolean).join('\n\n');
-
-            showERR('Barras: No se encontraron combinaciones factibles con los límites actuales.' + (extra ? '\n\n' + extra : ''));
-            log('Barras: options vacías en ambas zonas → se limpió Excel.');
-            return;
-          }
 
           const summary = _extractBarsSummary_(data, barsEnvelope);
           showOK(String(summary || '').trim() || 'Barras OK.');
@@ -1439,12 +1383,6 @@
 
       }else{
         const f = _formatBackendError_(data, out.raw);
-
-        if ((elAction.value || '') === 'Barras'){
-          try{ await clearBarsNamedCells_(); log('Barras: limpieza aplicada desde rama ERROR (data.ok=false).'); }
-          catch(e){ log('WARN Barras: no se pudo limpiar en rama ERROR: ' + (e.message || e)); }
-        }
-
         showERR(f.userMsg);
         log('ERROR backend: ' + f.techMsg);
 
@@ -1470,6 +1408,10 @@
     elApiUrl.value = DEFAULT_API_URL;
     setLogVisible_(false);
 
+    // ✅ arranque forzado: VISTA USUARIO SIEMPRE
+    _auth.role = 'user';
+    setView_('clean');
+
     const last = await storageGet_('seproincaia.token.last');
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
     else { log('Sin token guardado todavía.'); }
@@ -1482,10 +1424,6 @@
     btnCopyResult.addEventListener('click', copyResult_);
     btnClearResult.addEventListener('click', clearResult_);
     btnToggleTech.addEventListener('click', toggleView_);
-
-    // ✅ Restaurar vista (solo aplica si es dev/admin; si es user la fuerza auth)
-    const savedView = await storageGet_('seproincaia.view');
-    setView_(savedView === 'tech' ? 'tech' : 'clean');
 
     // ✅ Al escribir token: guardarlo + AUTH automático (debounce)
     let tmr = null;
@@ -1500,7 +1438,7 @@
       }, 450);
     });
 
-    // ✅ Si ya había token guardado, intentamos AUTH al abrir
+    // ✅ Si ya había token guardado, intentamos Auth; si no es admin, se queda user (por defecto)
     if (last){
       try{ await authCheck_(last); }catch(e){ log('WARN AUTH on startup: ' + (e.message || e)); }
     }
