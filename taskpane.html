@@ -285,25 +285,26 @@
       color:#0b3a64;
     }
 
-    /* ✅ OJO (historial) ultra nítido: líneas (stroke) y color controlado */
-    .iconBtn .eyeStroke{
-      stroke: #111827;
-      stroke-width: 2;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      vector-effect: non-scaling-stroke;
-      shape-rendering: geometricPrecision;
-    }
-    .iconBtn.isOn .eyeStroke{
-      stroke: #cbd5e1;
-    }
-
     /* Vista Limpia */
     body.viewClean .cardLog{ display:none !important; }
     body.viewClean #btnPing{ display:none !important; }
     body.viewClean #btnToggleLog{ display:none !important; }
     body.viewClean #hostChip{ display:none !important; }
+
+    /* ✅ Rol USER: nunca mostrar el botón técnico */
+    body.roleUser #btnToggleTech{ display:none !important; }
+    body.roleUnknown #btnToggleTech{ display:none !important; }
+
+    /* ✅ Rol USER/Unknown: nunca mostrar hostChip/cardLog aunque alguien quite viewClean */
+    body.roleUser #hostChip,
+    body.roleUser .cardLog,
+    body.roleUser #btnPing,
+    body.roleUser #btnToggleLog{ display:none !important; }
+
+    body.roleUnknown #hostChip,
+    body.roleUnknown .cardLog,
+    body.roleUnknown #btnPing,
+    body.roleUnknown #btnToggleLog{ display:none !important; }
 
     /* Footer */
     .footerBar{
@@ -417,15 +418,12 @@
             </svg>
           </button>
 
-          <!-- ✅ Historial / informe: HOJA + LUPA (líneas) bien legible -->
+          <!-- Botón técnico: solo admins (por CSS roleUser/roleUnknown queda oculto) -->
           <button class="iconBtn" id="btnToggleTech" type="button" title="Ver historial / informe">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <!-- hoja (outline) -->
               <path d="M7 3h7l4 4v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
                     fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-              <!-- pliegue -->
               <path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-              <!-- lupa (más grande y limpia) -->
               <circle cx="16.5" cy="16.5" r="3.3" fill="none" stroke="currentColor" stroke-width="2"/>
               <path d="M19.1 19.1l2.2 2.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
@@ -498,6 +496,7 @@
   const LOGP = "[SEPROINCA-IA][Excel] ";
 
   let _lastState = { state: 'neutral', uses: undefined };
+  let _role = 'unknown'; // 'unknown' | 'user' | 'admin'
 
   function storageAvailable_(){
     try{
@@ -551,6 +550,33 @@
     elResult.innerHTML = `<span class="bad">ERROR</span>\n\n${escapeHtml(text || '')}`;
   }
 
+  function setRole_(role){
+    const r = (role === 'admin' || role === 'user') ? role : 'unknown';
+    _role = r;
+
+    document.body.classList.toggle('roleAdmin', r === 'admin');
+    document.body.classList.toggle('roleUser', r === 'user');
+    document.body.classList.toggle('roleUnknown', r === 'unknown');
+
+    if (r !== 'admin'){
+      // hard-force clean for non-admin
+      setView_('clean', { persist:false, silent:true });
+    }else{
+      // admin: permite vista técnica
+      setView_('tech', { persist:false, silent:true });
+    }
+
+    log('Rol: ' + (r === 'admin' ? 'ADMIN' : (r === 'user' ? 'USER' : 'UNKNOWN')));
+  }
+
+  function _isAdminFromResponse_(data){
+    if (!data || typeof data !== 'object') return false;
+    if (data.is_admin === true) return true;
+    if (String(data.role || '').toLowerCase() === 'admin') return true;
+    if (typeof data.uses_remaining !== 'undefined' && Number(data.uses_remaining) === -1) return true;
+    return false;
+  }
+
   function setStateBusy_(isBusy){
     if (!!isBusy){
       elStateDot.className = 'dot blue pulse';
@@ -580,7 +606,16 @@
     return !document.body.classList.contains('viewClean');
   }
 
-  function setView_(view){
+  function setView_(view, opts){
+    const o = opts || {};
+    const persist = (typeof o.persist === 'boolean') ? o.persist : true;
+    const silent  = !!o.silent;
+
+    // No-admin: nunca permitir tech
+    if (_role !== 'admin'){
+      view = 'clean';
+    }
+
     const v = (view === 'tech') ? 'tech' : 'clean';
     document.body.classList.toggle('viewClean', v === 'clean');
 
@@ -591,11 +626,17 @@
     if (v === 'tech') setLogVisible_(true);
     else setLogVisible_(false);
 
-    storageSet_('seproincaia.view', v).catch(()=>{});
-    log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
+    if (persist && _role === 'admin'){
+      storageSet_('seproincaia.view', v).catch(()=>{});
+    }
+
+    if (!silent){
+      log('Vista: ' + (v === 'clean' ? 'Limpia' : 'Técnica'));
+    }
   }
 
   function toggleView_(){
+    if (_role !== 'admin') return; // seguridad extra
     setView_(isTech_() ? 'clean' : 'tech');
   }
 
@@ -723,6 +764,14 @@
     return t;
   }
 
+  function _fmtUses_(uses){
+    if (uses === null || typeof uses === 'undefined') return '';
+    const u = Number(uses);
+    if (Number.isFinite(u) && u === -1) return '∞';
+    if (Number.isFinite(u)) return String(u);
+    return '';
+  }
+
   function setState_(state, uses, save=true){
     const s = (state === 'active' || state === 'invalid') ? state : 'neutral';
 
@@ -737,7 +786,9 @@
       return;
     }
 
-    const u = (typeof uses !== 'undefined' && uses !== null) ? ` · ${uses} usos` : '';
+    const uTxt = _fmtUses_(uses);
+    const u = (uTxt !== '') ? ` · ${uTxt} usos` : '';
+
     if (s === 'active'){
       elStateText.textContent = `OK${u}`;
     }else{
@@ -813,7 +864,7 @@
     return { userMsg, techMsg: tech + detailTxt, raw: fallbackRaw || '' };
   }
 
-   // ------- INICIO PARTE II -------
+  // ------- INICIO PARTE II (tu lógica intacta) -------
   // ------- BARRAS helpers (sin cambios) -------
   function _toNumberOrNull_(v){
     if (v === null || typeof v === 'undefined') return null;
@@ -1291,6 +1342,17 @@
 
       const data = out.data;
 
+      // ✅ Detectar rol solo en respuesta válida (ok true/false igual sirve para detectar admin)
+      if (data && typeof data === 'object'){
+        const admin = _isAdminFromResponse_(data);
+        if (admin && _role !== 'admin'){
+          setRole_('admin');
+        }else if (!admin && _role === 'unknown'){
+          // si no es admin y aún no sabemos, lo fijamos como user al primer POST
+          setRole_('user');
+        }
+      }
+
       if (data && data.ok){
         log('OK: respuesta recibida');
         const uses = (typeof data.uses_remaining !== 'undefined') ? data.uses_remaining : undefined;
@@ -1372,6 +1434,10 @@
     elApiUrl.value = DEFAULT_API_URL;
     setLogVisible_(false);
 
+    // ✅ SIEMPRE iniciar en clean + rol unknown (no muestra nada técnico)
+    setRole_('unknown');
+    setView_('clean', { persist:false, silent:true });
+
     const last = await storageGet_('seproincaia.token.last');
     if (last) { elToken.value = last; log('Token cargado desde memoria local.'); }
     else { log('Sin token guardado todavía.'); }
@@ -1386,8 +1452,8 @@
     btnClearResult.addEventListener('click', clearResult_);
     btnToggleTech.addEventListener('click', toggleView_);
 
-    const savedView = await storageGet_('seproincaia.view');
-    setView_(savedView === 'tech' ? 'tech' : 'clean');
+    // ✅ No aplicar savedView hasta ser admin (y aun así arrancamos clean siempre)
+    // (si luego eres admin, podrás alternar y guardará)
 
     let tmr = null;
     elToken.addEventListener('input', () => {
